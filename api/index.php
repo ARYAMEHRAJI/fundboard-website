@@ -92,7 +92,10 @@ if ($action === 'profile') {
             $quote = fb_dispatch_module('tsetmc','quote',['symbol'=>$id]);
             $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>180,'1y'=>365,'all'=>500][$range];
             $hist = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>$days]);
-            respond(['success'=>true,'status'=>'live','kind'=>'stock','profile'=>$quote,'history'=>$hist['rows']??[],'fetched_at'=>date(DATE_ATOM)]);
+            $disclosures=[];$codalCompany=[];
+            try{$codalCompany=fb_dispatch_module('codal','company',['query'=>$quote['symbol']??$id]);}catch(Throwable $e){}
+            try{$letters=fb_dispatch_module('codal','search_letters',['symbol'=>$quote['symbol']??$id,'page'=>1]);$disclosures=array_slice($letters['letters']??[],0,12);}catch(Throwable $e){}
+            respond(['success'=>true,'status'=>'live','kind'=>'stock','profile'=>$quote,'history'=>$hist['rows']??[],'disclosures'=>$disclosures,'codal_company'=>$codalCompany['companies'][0]??null,'fetched_at'=>date(DATE_ATOM)]);
         }
         if ($kind === 'fund') {
             $fundData = fb_dispatch_module('tsetmc','fund_profile',['symbol'=>$id,'reg_no'=>(string)($_GET['reg_no']??'')]);
