@@ -77,10 +77,40 @@ function fb_tsetmc(string $tool, array $p): array {
     };
     $pct=fn($a,$b)=>($a && $b)?round(($a-$b)/$b*100,2):null;
     $num=fn($x)=>is_numeric($x)?(0+(float)$x):null;
+    if($tool==='fund_list'){
+        $types=[4=>'درآمد ثابت',5=>'کالایی',6=>'سهامی',7=>'مختلط',11=>'بازارگردانی',12=>'سرمایه‌گذاری خطرپذیر',13=>'پروژه‌ای',14=>'املاک و مستغلات',16=>'خصوصی',17=>'سایر'];
+        $out=[];$errors=[];
+        foreach($types as $type=>$label){
+            try{
+                $d=fb_http_json($base.'/Fund/GetFunds/'.$type,[],18);
+                foreach(($d['funds']??[]) as $x){
+                    $name=(string)($x['name']??$x['fundName']??$x['lVal30']??$x['title']??$x['nameFa']??'');
+                    $symbol=(string)($x['symbol']??$x['lVal18AFC']??$x['ticker']??'');
+                    $ins=(string)($x['insCode']??$x['inscode']??$x['instrumentCode']??'');
+                    $out[]=['name'=>fb_fa($name),'symbol'=>fb_fa($symbol),'ins_code'=>$ins,'reg_no'=>$x['regNo']??$x['regno']??$x['registrationNo']??null,'type'=>$type,'type_title'=>$label,'nav'=>$x['nav']??$x['NAV']??null,'aum'=>$x['aUM']??$x['aum']??$x['AUM']??null,'raw'=>$x];
+                }
+            }catch(Throwable $e){$errors[$type]=$e->getMessage();}
+        }
+        $unique=[];foreach($out as $x){$key=$x['ins_code']?:($x['symbol'].'|'.$x['name']);if($key!=='')$unique[$key]=$x;}
+        return ['funds'=>array_values($unique),'count'=>count($unique),'types'=>$types,'partial_errors'=>$errors,'source'=>'TSETMC Fund API'];
+    }
     if($tool==='search'){
         if($symbol==='') throw new InvalidArgumentException('نام نماد یا شرکت را وارد کنید.');
         $d=fb_http_json($base.'/Instrument/GetInstrumentSearch/'.rawurlencode($symbol));
         return ['matches'=>array_map(fn($x)=>['symbol'=>fb_fa((string)($x['lVal18AFC']??'')),'name'=>fb_fa((string)($x['lVal30']??'')),'ins_code'=>$x['insCode']??null,'market'=>fb_fa((string)($x['flowTitle']??'')),'asset_type'=>(preg_match('/صندوق|ETF|fund/i',fb_fa((string)(($x['cSecValTitle']??'').' '.($x['flowTitle']??'').' '.($x['cgrValCotTitle']??''))))?'fund':'stock')],array_slice($d['instrumentSearch']??[],0,max(1,min(30,(int)($p['limit']??10)))))];
+    }
+    if($tool==='fund_profile'){
+        [$ins,$ticker]=$resolve();
+        if(!$ins)throw new RuntimeException('نماد صندوق در TSETMC پیدا نشد.');
+        $quote=fb_http_json($base.'/Instrument/GetInstrumentInfo/'.$ins)['instrumentInfo']??[];
+        $etf=fb_http_json($base.'/Fund/GetETFByInsCode/'.$ins)['etf']??[];
+        $regNo=(string)($p['reg_no']??'');
+        $detail=[];
+        if($regNo!==''&&ctype_digit($regNo))$detail=fb_http_json($base.'/Fund/GetFundInDetail/'.$regNo)['fund']??[];
+        $last=fb_http_json($base.'/ClosingPrice/GetClosingPriceInfo/'.$ins)['closingPriceInfo']??[];
+        $lastPrice=$num($last['pDrCotVal']??null);
+        $nav=$num($etf['pRedTran']??$quote['nav']??null);
+        return ['ins_code'=>$ins,'symbol'=>$ticker,'name'=>fb_fa((string)($quote['lVal30']??'')),'sector'=>fb_fa((string)($quote['sector']['lSecVal']??'')),'unit'=>'rial','quote'=>['last'=>$lastPrice,'close'=>$num($last['pClosing']??null),'change_pct'=>$pct($last['pDrCotVal']??null,$last['priceYesterday']??null)],'nav'=>['redemption'=>$nav,'subscription'=>$num($etf['pSubTran']??null),'date'=>$etf['deven']??null,'time'=>$etf['hEven']??null],'premium_pct'=>($lastPrice&&$nav)?round(($lastPrice/$nav-1)*100,3):null,'instrument_info'=>$quote,'fund_detail'=>$detail,'etf_data'=>$etf,'data_scope'=>'TSETMC fund/ETF endpoints'];
     }
     if($tool==='indices'){
         $o=fb_http_json($base.'/MarketData/GetMarketOverview/1')['marketOverview']??[];
@@ -324,7 +354,7 @@ function fb_crypto(string $tool, array $p): array {
     throw new RuntimeException('ابزار انتخابی رمزارز هنوز به API عمومی صرافی‌ها متصل نشده است.');
 }
 function fb_dispatch_module(string $module,string $tool,array $p): array {
-    $ttl=$module==='codal'?3600:($module==='crypto'?30:15);
+    $ttl=$module==='codal'?3600:($module==='crypto'?30:($module==='tsetmc'&&$tool==='fund_list'?300:15));
     return fb_cache_module($module.':'.$tool.':'.http_build_query($p),$ttl,function()use($module,$tool,$p){
         if($module==='tsetmc')return fb_tsetmc($tool,$p);
         if($module==='codal')return fb_codal($tool,$p);
