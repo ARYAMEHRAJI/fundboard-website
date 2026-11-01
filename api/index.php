@@ -104,6 +104,8 @@ if ($action === 'bridge') {
     if (!in_array($source, $allowed, true)) respond(['success'=>false,'status'=>'invalid_source'], 400);
     $bridgeKeys = ['funds'=>'funds_bridge_url','stocks'=>'tsetmc_bridge_url','codal'=>'codal_bridge_url','crypto'=>'crypto_bridge_url'];
     $url = trim((string)($config['sources'][$bridgeKeys[$source]] ?? ''));
+    $bridgeToken = trim((string)($config['sources']['bridge_bearer_token'] ?? ''));
+    if ($bridgeToken === '') respond(['success'=>false,'status'=>'not_configured','message'=>'توکن امنیتی Bridge تنظیم نشده است.']);
     if ($url === '') respond(['success'=>false,'status'=>'not_configured','message'=>'سرویس واسط این بخش تنظیم نشده است.']);
     if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['https'], true)) respond(['success'=>false,'status'=>'invalid_bridge_url'], 500);
     $result = cached('bridge:' . $source, $ttl, static function() use ($url, $config): array {
@@ -111,7 +113,7 @@ if ($action === 'bridge') {
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER=>true, CURLOPT_CONNECTTIMEOUT=>7, CURLOPT_TIMEOUT=>20,
             CURLOPT_FOLLOWLOCATION=>false, CURLOPT_SSL_VERIFYPEER=>true, CURLOPT_SSL_VERIFYHOST=>2,
-            CURLOPT_HTTPHEADER=>['Accept: application/json','Authorization: Bearer '.($config['sources']['bridge_bearer_token'] ?? '')]
+            CURLOPT_HTTPHEADER=>['Accept: application/json','Authorization: Bearer '.$bridgeToken]
         ]);
         $body = curl_exec($ch); $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
         $json = is_string($body) ? json_decode($body, true) : null;
