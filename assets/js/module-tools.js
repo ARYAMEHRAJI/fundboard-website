@@ -57,7 +57,7 @@ function render(module){
 function selectTool(module,id){
  const host=currentView();if(!host)return;
  const item=toolSets[module].find(x=>x[0]===id);if(!item)return;
- const supported=module==='stocks'?true:module==='codal'?['company','search_letters','categories','financial_years'].includes(id):(['exchanges','compare','ticker','markets'].includes(id));
+ const supported=module==='stocks'?true:module==='codal'?['company','search_letters','categories','financial_years','letter'].includes(id):(['exchanges','compare','ticker','markets'].includes(id));
  host.querySelectorAll('.tool-choice').forEach(b=>b.classList.toggle('selected',b.dataset.moduleTool===id));
  $('#toolTitle').textContent=item[1];
  $('#toolDesc').textContent=supported?'پارامترها را وارد کن و درخواست را اجرا کن. پاسخ از منبع اصلی دریافت می‌شود.':'این قابلیت در فهرست ابزارهای مرجع وجود دارد؛ آداپتور مستقیم آن هنوز به هاست منتقل نشده و به‌جای نمایش داده ساختگی غیرفعال است.';
