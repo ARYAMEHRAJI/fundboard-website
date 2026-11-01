@@ -55,6 +55,12 @@ function fb_build_research(string $kind,string $id,array $history,string $codalS
     if($latestReport&&!empty($latestReport['tracing_no'])){
         try{$reportData=fb_dispatch_module('codal','letter',['tracing_no'=>$latestReport['tracing_no']]);}catch(Throwable $e){}
     }
+    $latestMonthly=null;
+    foreach($events as $event){if(str_contains((string)$event['type'],'عملکرد ماهانه')){$latestMonthly=$event;break;}}
+    $monthlyData=null;
+    if($latestMonthly&&!empty($latestMonthly['tracing_no'])){
+        try{$monthlyData=fb_dispatch_module('codal','letter',['tracing_no'=>$latestMonthly['tracing_no']]);}catch(Throwable $e){}
+    }
     return [
         'kind'=>$kind,'symbol'=>$symbol,'metrics'=>[
             'return_1w'=>$atReturn(5),'return_1m'=>$atReturn(21),'return_3m'=>$atReturn(63),'return_1y'=>$atReturn(252),
@@ -63,7 +69,7 @@ function fb_build_research(string $kind,string $id,array $history,string $codalS
             'volume_ratio_20_60'=>$volumeRatio,'net_real_value_5'=>$flow5['net_value'],'net_real_value_20'=>$flow20['net_value'],
             'net_real_volume_20'=>$flow20['net_volume']
         ],
-        'flow_series'=>$flowSeries,'events'=>$events,'flags'=>$flags,'codal_error'=>$codalError,'latest_financial_report'=>$reportData,
+        'flow_series'=>$flowSeries,'events'=>$events,'flags'=>$flags,'codal_error'=>$codalError,'latest_financial_report'=>$reportData,'latest_monthly_report'=>$monthlyData,
         'methodology'=>'بازدهی از قیمت‌های پایانی روزانه TSETMC؛ نوسان سالانه‌شده با انحراف معیار بازده روزانه و ضریب ریشه ۲۵۲؛ افت از بیشینه تاریخی بازه دریافت‌شده؛ جریان حقیقی بر اساس اختلاف ارزش خرید و فروش حقیقی. این شاخص‌ها توصیفی‌اند و توصیه معاملاتی نیستند.',
         'history_points'=>count($rows),'flow_points'=>count($flow)
     ];
