@@ -49,3 +49,22 @@
 .research-report-empty{color:var(--muted);font-size:11px;padding:10px 0}
 
 .profile-codal-company{display:block;color:#8495ad;font-size:10px;margin-top:5px}
+
+/* Cross-source market intelligence workspace */
+.intel-status{padding:10px 13px;border:1px solid var(--line);border-radius:10px;color:var(--muted);font-size:11px;margin:12px 0 16px;background:var(--surface)}
+.intel-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.intel-metric{padding:15px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.intel-metric small,.intel-metric span{display:block;color:var(--muted);font-size:10px}
+.intel-metric b{display:block;font-size:19px;margin:7px 0;direction:ltr}
+.intel-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:13px}
+.intel-card{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface);min-width:0;margin-bottom:14px}
+.intel-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.intel-card-head h3{margin:0 0 4px;font-size:15px}.intel-card-head p{margin:0;color:var(--muted);font-size:10px}
+.intel-card-head>span{font-size:9px;color:#b3a8ff;border:1px solid var(--line);border-radius:20px;padding:5px 8px}
+.intel-treemap{height:400px}.intel-events{margin-top:0}
+.intel-event-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.intel-event{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:11px;color:var(--text);text-decoration:none;background:var(--surface2);min-width:0}
+.intel-event span,.intel-event small{font-size:10px;color:var(--muted)}.intel-event b{font-size:11px;line-height:1.8}
+.intel-footnote{font-size:10px;line-height:1.9;color:var(--muted);padding:5px 2px 20px}
+@media(max-width:900px){.intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-grid{grid-template-columns:1fr}.intel-event-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.intel-treemap{height:300px}.intel-event-grid{grid-template-columns:1fr}.intel-card{padding:13px}}
