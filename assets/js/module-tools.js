@@ -125,12 +125,12 @@ async function runTool(module,id,fd){
   if(id==='market_map'&&Array.isArray(data.items)&&data.items.length){visual='<div id="marketTreemap" class="chart chart-tall"></div>';}
   if(id==='candles'&&Array.isArray(data.rows)&&data.rows.length){
    visual='<div id="cryptoCandleChart" class="chart chart-tall"></div><div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>زمان</th><th>باز</th><th>بیشینه</th><th>کمینه</th><th>بسته</th><th>حجم</th></tr></thead><tbody>'+data.rows.slice(-30).map(x=>'<tr><td>'+esc(x.time)+'</td><td>'+esc(x.open)+'</td><td>'+esc(x.high)+'</td><td>'+esc(x.low)+'</td><td>'+esc(x.close)+'</td><td>'+esc(x.volume)+'</td></tr>').join('')+'</tbody></table></div>';
-  }else if(id==='orderbook'){
+  }else if(id==='orderbook'&&module==='crypto'){
    const rows=[...(data.bids||[]).slice(0,20).map(x=>({...x,side:'خرید'})),...(data.asks||[]).slice(0,20).map(x=>({...x,side:'فروش'}))];
    visual='<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>سمت</th><th>قیمت</th><th>حجم</th><th>ارزش</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.side)+'</td><td>'+esc(x.price)+'</td><td>'+esc(x.quantity)+'</td><td>'+esc(x.sum||'—')+'</td></tr>').join('')+'</tbody></table></div>';
-  }else if(id==='trades'){
+  }else if(id==='trades'&&module==='crypto'){
    const rows=data.trades||[];visual='<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>زمان</th><th>قیمت</th><th>حجم</th><th>جهت</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.timestamp||x.time||'')+'</td><td>'+esc(x.price)+'</td><td>'+esc(x.quantity??x.volume)+'</td><td>'+esc(x.side||x.type||(x.isBuyOrder?'خرید':'فروش'))+'</td></tr>').join('')+'</tbody></table></div>';
-  }else if(id==='movers'){
+  }else if(id==='movers'&&module==='crypto'){
    const rows=data.markets||[];visual='<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>ارز</th><th>قیمت</th><th>تغییر ۲۴ساعته</th><th>حجم</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.name||x.coin)+'</td><td>'+esc(x.price)+'</td><td>'+esc(x.change_pct)+'٪</td><td>'+esc(x.volume)+'</td></tr>').join('')+'</tbody></table></div>';
   }
   result.innerHTML='<div class="result-head"><span class="status-pill">LIVE SOURCE RESPONSE</span><button class="text-btn" id="copyToolResult">کپی JSON</button></div>'+visual+'<pre class="json-output">'+esc(JSON.stringify(data,null,2))+'</pre>';
