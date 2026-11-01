@@ -149,6 +149,32 @@ function fb_tsetmc(string $tool, array $p): array {
         $nav=$num($etf['pRedTran']??$quote['nav']??null);
         return ['ins_code'=>$ins,'symbol'=>$ticker,'name'=>fb_fa((string)($quote['lVal30']??'')),'sector'=>fb_fa((string)($quote['sector']['lSecVal']??'')),'unit'=>'rial','quote'=>['last'=>$lastPrice,'close'=>$num($last['pClosing']??null),'change_pct'=>$pct($last['pDrCotVal']??null,$last['priceYesterday']??null)],'nav'=>['redemption'=>$nav,'subscription'=>$num($etf['pSubTran']??null),'date'=>$etf['deven']??null,'time'=>$etf['hEven']??null],'premium_pct'=>($lastPrice&&$nav)?round(($lastPrice/$nav-1)*100,3):null,'instrument_info'=>$quote,'fund_detail'=>$detail,'etf_data'=>$etf,'data_scope'=>'TSETMC fund/ETF endpoints'];
     }
+    if(in_array($tool,['statistics','shareholders','messages','price_adjustments','trades','intraday','trade_volume','status','option_chain'],true)){
+        [$ins,$ticker]=$resolve();
+        if(!$ins)throw new RuntimeException('نماد در TSETMC پیدا نشد.');
+        if($tool==='statistics'){$d=fb_http_json($base.'/MarketData/GetInstrumentStatistic/'.$ins,[],18);return ['symbol'=>$ticker,'items'=>$d['instrumentStatistic']??[]];}
+        if($tool==='shareholders'){$d=fb_http_json($base.'/Shareholder/GetInstrumentShareHolderLast/'.$ins,[],18);return ['symbol'=>$ticker,'holders'=>$d['shareHolder']??[]];}
+        if($tool==='messages'){$d=fb_http_json($base.'/Msg/GetMsgByInsCode/'.$ins,[],18);return ['symbol'=>$ticker,'messages'=>$d['msg']??[]];}
+        if($tool==='price_adjustments'){$d=fb_http_json($base.'/ClosingPrice/GetPriceAdjustList/'.$ins,[],18);return ['symbol'=>$ticker,'events'=>$d['priceAdjust']??[]];}
+        if($tool==='trades'){$d=fb_http_json($base.'/Trade/GetTrade/'.$ins,[],18);return ['symbol'=>$ticker,'trades'=>$d['trade']??[]];}
+        if($tool==='intraday'){$d=fb_http_json($base.'/Trade/GetTradeIntraDay/'.$ins,[],18);return ['symbol'=>$ticker,'trades'=>$d['tradeIntraDay']??[]];}
+        if($tool==='trade_volume'){$d=fb_http_json($base.'/Trade/GetTradeVolume/'.$ins,[],18);return ['symbol'=>$ticker,'distribution'=>$d['tradeVolume']??[]];}
+        if($tool==='status'){$date=(string)($p['date']??date('Ymd'));if(!preg_match('/^\\d{8}$/',$date))throw new InvalidArgumentException('تاریخ باید به شکل YYYYMMDD باشد.');$d=fb_http_json($base.'/MarketData/GetInstrumentState/'.$ins.'/'.$date,[],18);return ['symbol'=>$ticker,'state'=>$d['instrumentState']??[]];}
+        if($tool==='option_chain'){$info=fb_http_json($base.'/Instrument/GetInstrumentInfo/'.$ins,[],18)['instrumentInfo']??[];$instrumentId=(string)($info['instrumentID']??'');if($instrumentId==='')throw new RuntimeException('شناسه پایه برای دریافت زنجیره اختیار پیدا نشد.');$d=fb_http_json($base.'/Instrument/GetInstrumentOptionByInstrumentID/'.rawurlencode($instrumentId),[],18);return ['symbol'=>$ticker,'instrument_id'=>$instrumentId,'response'=>$d];}
+    }
+    if($tool==='options_market'){
+        $d=fb_http_json($base.'/Instrument/GetInstrumentOptionMarketWatch',[],20);
+        return ['response'=>$d,'source'=>'TSETMC option market watch'];
+    }
+    if($tool==='market_overview'){
+        $flow=max(0,min(4,(int)($p['flow']??1)));$d=fb_http_json($base.'/MarketData/GetMarketOverview/'.$flow,[],18);return ['overview'=>$d['marketOverview']??[]];
+    }
+    if($tool==='index_overview'){
+        $flow=max(1,min(2,(int)($p['flow']??1)));$d=fb_http_json($base.'/Index/GetIndexB1LastAll/SelectedIndexes/'.$flow,[],18);return ['indices'=>$d['indexB1']??[]];
+    }
+    if($tool==='sectors'){
+        $d=fb_http_json($base.'/MarketData/GetSectorsSummary',[],18);return ['sectors'=>$d['sectorSummeries']??$d['sectorSummaries']??[]];
+    }
     if($tool==='indices'){
         $o=fb_http_json($base.'/MarketData/GetMarketOverview/1')['marketOverview']??[];
         $idx=fb_http_json($base.'/Index/GetIndexB1LastAll/All/1')['indexB1']??[];
