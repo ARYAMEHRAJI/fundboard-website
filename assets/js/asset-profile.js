@@ -57,6 +57,7 @@ async function loadProfile(){
  }catch(e){$('#profileMainChart').innerHTML='<div class="data-empty">'+esc(e.message)+'</div>';$('#profileDataNote').textContent='منبع داده در دسترس نیست.'}
 }
 async function openProfile(k,id){kind=k;assetId=id;range='1m';mode='candle';const root=document.createElement('div');root.id='assetProfileOverlay';document.body.append(root);root.innerHTML='<div class="profile-page"><div class="data-empty">در حال دریافت پروفایل…</div></div>';await loadProfile()}
+window.addEventListener('fundboard-open-profile',e=>openProfile(e.detail.kind,e.detail.id));
 document.addEventListener('DOMContentLoaded',addSearch);if(document.readyState!=='loading')addSearch();
 window.addEventListener('resize',()=>{chart?.resize();rsiChart?.resize()});
 })();
