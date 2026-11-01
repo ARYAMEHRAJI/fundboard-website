@@ -34,13 +34,23 @@ async function renderIntelligence(){
  $('#intelCodal').innerHTML=letters.length?letters.slice(0,12).map(x=>'<a class="intel-event" href="'+esc(x.url||'#')+'" target="_blank" rel="noopener"><span>'+esc(x.symbol||x.company||'ناشر')+' · '+esc(x.sent||'')+'</span><b>'+esc(x.title||'اطلاعیه')+'</b><small>شماره پیگیری: '+esc(x.tracing_no||'—')+' · مشاهده در کدال ←</small></a>').join(''):'<div class="data-empty">اطلاعیه‌های کدال در دسترس نیستند؛ محدودیت شبکه یا پاسخ کدال را بررسی کن.</div>';
 }
 function renderFunds(){
- const body=base('مرکز تحلیل صندوق‌ها','جستجوی صندوق‌های ETF پذیرفته‌شده در بازار؛ پروفایل شامل تابلو و تاریخچه قیمت است. NAV و ترکیب پرتفوی به منبع تخصصی صندوق نیاز دارد.');
+ const body=base('مرکز تحلیل صندوق‌ها','فهرست صندوق‌های بازار، فیلتر بر اساس گروه و دسترسی به پروفایل ترکیبی قیمت، NAV و گزارش‌های کدال.');
  if(!body)return;
- body.innerHTML='<div class="workspace-toolbar"><input id="fundQuery" placeholder="نام یا نماد صندوق را وارد کن؛ مثال: افران"><button id="fundSearch" class="btn btn-primary">جستجوی صندوق</button><span>منبع: TSETMC</span></div><div id="fundRows"><div class="data-empty">برای جلوگیری از نمایش فهرست ناقص، نام یا نماد صندوق را جستجو کن.</div></div>';
- const run=async()=>{const q=$('#fundQuery').value.trim();if(q.length<2)return;$('#fundRows').innerHTML='<div class="data-empty">در حال جستجو…</div>';try{const j=await get('api/?action=search&q='+encodeURIComponent(q));const rows=j.results?.funds||[];$('#fundRows').innerHTML=rows.length?table(rows.map(x=>({...x,_board:x.type_title||'TSETMC ETF',slug:x.ins_code||x.symbol}))):'<div class="data-empty">صندوقی با این عبارت در نتایج TSETMC تشخیص داده نشد. می‌توانی از جستجوی عمومی بالای صفحه استفاده کنی.</div>'}catch(e){$('#fundRows').innerHTML='<div class="data-empty">'+esc(e.message)+'</div>'}};
- $('#fundSearch').onclick=run;$('#fundQuery').addEventListener('keydown',e=>{if(e.key==='Enter')run()});
+ body.innerHTML='<div class="workspace-toolbar"><input id="fundFilter" placeholder="جستجوی نام یا نماد صندوق…"><select id="fundCategory"><option value="">همه انواع صندوق</option></select><span id="fundCount">در حال دریافت…</span></div><div id="fundRows"><div class="data-empty">در حال دریافت فهرست صندوق‌ها از TSETMC…</div></div>';
+ get('api/?action=module&module=tsetmc&tool=fund_list').then(j=>{
+  allFunds=(j.data?.funds||[]).map(x=>({...x,_board:x.type_title||'سایر',slug:x.ins_code||x.symbol}));
+  const cats=[...new Set(allFunds.map(x=>x.type_title).filter(Boolean))];
+  $('#fundCategory').innerHTML='<option value="">همه انواع صندوق</option>'+cats.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+  filterFunds();
+ }).catch(e=>{$('#fundCount').textContent='عدم اتصال';$('#fundRows').innerHTML='<div class="data-empty">'+esc(e.message)+'؛ برای استفاده از جستجو، بخش جستجوی بالای سایت را امتحان کن.</div>'});
+ $('#fundFilter').oninput=filterFunds;$('#fundCategory').onchange=filterFunds;
 }
-function filterFunds(){const q=$('#fundFilter').value.toLowerCase(),cat=$('#fundCategory').value;const rows=allFunds.filter(x=>(!cat||x._board===cat)&&((x.name||'').toLowerCase().includes(q)||(x.slug||'').toLowerCase().includes(q)));$('#fundRows').innerHTML=table(rows)}
+function filterFunds(){
+ const q=($('#fundFilter')?.value||'').toLowerCase(),cat=$('#fundCategory')?.value||'';
+ const rows=allFunds.filter(x=>(!cat||x.type_title===cat)&&((x.name||'').toLowerCase().includes(q)||(x.symbol||'').toLowerCase().includes(q)));
+ $('#fundCount').textContent=fmt(rows.length)+' صندوق';
+ $('#fundRows').innerHTML=rows.length?'<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>نام صندوق</th><th>نماد</th><th>نوع</th><th>NAV</th><th>دارایی تحت مدیریت</th><th></th></tr></thead><tbody>'+rows.map(x=>'<tr><td><b>'+esc(x.name||'—')+'</b></td><td>'+esc(x.symbol||'—')+'</td><td>'+esc(x.type_title||'—')+'</td><td>'+fmt(x.nav)+'</td><td>'+fmt(x.aum)+'</td><td>'+(x.ins_code?'<button class="text-btn" data-open-fund="'+esc(x.ins_code)+'" data-reg-no="'+esc(x.reg_no||'')+'">پروفایل ←</button>':'<span class="muted">کد تابلو موجود نیست</span>')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="data-empty">صندوقی با این فیلتر پیدا نشد یا منبع فهرست را خالی برگرداند.</div>';
+}
 function renderGold(){
  const body=base('بازار طلا و ارز','تابلوهای طلا و ارز متصل به Tindex؛ قیمت و تغییرات فقط در صورت دریافت از منبع نمایش داده می‌شوند.');
  loadBoards().then(()=>{const b=boards.find(x=>x.key==='gold'||x.key==='currency');const rows=(b?.rows||[]).map(x=>({...x,_board:b.key}));body.innerHTML='<div class="mini-stat-grid">'+rows.slice(0,4).map(x=>'<div class="mini-stat"><small>'+esc(x.name||x.slug)+'</small><b>'+fmt(x.price)+'</b><small class="'+(Number(x.change)>=0?'positive':'negative')+'">'+fmt(x.change)+'٪</small></div>').join('')+'</div><div class="panel"><div class="panel-head"><div><h3>روند شاخص‌های منتخب</h3><p>مقادیر spark از تابلو Tindex</p></div></div><div id="goldSparkChart" class="chart chart-tall"></div></div>'+table(rows,false);const el=$('#goldSparkChart');const series=rows.filter(x=>Array.isArray(x.spark)&&x.spark.length).slice(0,5).map(x=>({name:x.name||x.slug,type:'line',data:x.spark,symbol:'none',smooth:true}));if(el&&series.length){const n=Math.max(...series.map(x=>x.data.length));const c=echarts.init(el);c.setOption({tooltip:{trigger:'axis'},legend:{textStyle:{color:'#9aa9be'}},grid:{left:55,right:20,top:35,bottom:30},xAxis:{type:'category',data:Array.from({length:n},(_,i)=>String(i+1)),axisLabel:{color:'#8796ad'}},yAxis:{type:'value',scale:true,axisLabel:{color:'#8796ad'},splitLine:{lineStyle:{color:'#26364b'}}},series})}}).catch(e=>body.innerHTML='<div class="data-empty">'+esc(e.message)+'</div>');
@@ -101,6 +111,6 @@ function renderPortfolio(){
 }
 const renderers={intelligence:renderIntelligence,funds:renderFunds,gold:renderGold,screener:renderScreener,compare:renderCompare,portfolio:renderPortfolio};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(!b)return;const v=b.dataset.view;if(renderers[v]){selected=[];setTimeout(renderers[v],30)}});
-document.addEventListener('click',e=>{const b=e.target.closest('[data-open-fund]');if(b)window.dispatchEvent(new CustomEvent('fundboard-open-profile',{detail:{kind:'fund',id:b.dataset.openFund}}));const st=e.target.closest('[data-open-stock]');if(st)window.dispatchEvent(new CustomEvent('fundboard-open-profile',{detail:{kind:'stock',id:st.dataset.openStock}}))});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-open-fund]');if(b)window.dispatchEvent(new CustomEvent('fundboard-open-profile',{detail:{kind:'fund',id:b.dataset.openFund,reg_no:b.dataset.regNo||''}}));const st=e.target.closest('[data-open-stock]');if(st)window.dispatchEvent(new CustomEvent('fundboard-open-profile',{detail:{kind:'stock',id:st.dataset.openStock}}))});
 window.addEventListener('resize',()=>{workspaceChart?.resize();intelChart?.resize()});
 })();
