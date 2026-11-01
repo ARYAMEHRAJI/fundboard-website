@@ -1,0 +1,159 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Native PHP adapters for public market sources.
+ * No MCP runtime, Python daemon, VPS, or external worker is used.
+ */
+function fb_http_json(string $url, array $query = [], int $timeout = 14, array $headers = []): array {
+    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+    $allowed = ['cdn.tsetmc.com','search.codal.ir','www.codal.ir'];
+    if (!in_array($host, $allowed, true)) {
+        throw new RuntimeException('Upstream host is not allow-listed.');
+    }
+    if ($query) $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($query);
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER=>true, CURLOPT_CONNECTTIMEOUT=>5, CURLOPT_TIMEOUT=>$timeout,
+        CURLOPT_FOLLOWLOCATION=>false, CURLOPT_SSL_VERIFYPEER=>true, CURLOPT_SSL_VERIFYHOST=>2,
+        CURLOPT_HTTPHEADER=>array_merge(['Accept: application/json','Accept-Language: fa-IR,fa;q=0.9,en;q=0.8',
+            'Referer: https://'.($host==='cdn.tsetmc.com'?'main.tsetmc.com':'www.codal.ir').'/'], $headers),
+        CURLOPT_USERAGENT=>'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36'
+    ]);
+    $body=curl_exec($ch); $status=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE); $err=curl_error($ch); curl_close($ch);
+    if (!is_string($body)) throw new RuntimeException('خطای ارتباط با منبع داده: '.$err);
+    if ($status===429) throw new RuntimeException('منبع داده محدودیت درخواست اعمال کرده؛ کمی بعد دوباره تلاش کنید.');
+    if ($status<200 || $status>=300) throw new RuntimeException('منبع داده پاسخ HTTP '.$status.' برگرداند.');
+    $data=json_decode($body,true);
+    if (!is_array($data)) throw new RuntimeException('پاسخ منبع داده JSON معتبر نیست.');
+    return $data;
+}
+function fb_cache_module(string $key, int $ttl, callable $callback): array {
+    $dir=dirname(__DIR__).'/storage/cache';
+    if (!is_dir($dir)) @mkdir($dir,0750,true);
+    $file=$dir.'/module-'.hash('sha256',$key).'.json';
+    if (is_file($file) && time()-filemtime($file)<$ttl) {
+        $v=json_decode((string)file_get_contents($file),true); if (is_array($v)) return $v;
+    }
+    $v=$callback();
+    @file_put_contents($file,json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);
+    return $v;
+}
+function fb_fa(string $s): string { return trim(strtr($s,['ي'=>'ی','ك'=>'ک','ۀ'=>'ه'])); }
+function fb_tsetmc(string $tool, array $p): array {
+    $base='https://cdn.tsetmc.com/api';
+    $symbol=fb_fa((string)($p['symbol']??$p['query']??''));
+    $resolve=function() use($base,$symbol): array {
+        if ($symbol==='') throw new InvalidArgumentException('نماد را وارد کنید.');
+        if (ctype_digit($symbol) && strlen($symbol)>=10) return [$symbol,null];
+        $d=fb_http_json($base.'/Instrument/GetInstrumentSearch/'.rawurlencode($symbol));
+        $hits=$d['instrumentSearch']??[]; $norm=fn($v)=>preg_replace('/[\s.‌-]+/u','',mb_strtolower(fb_fa((string)$v)));
+        foreach(['lVal18AFC','lVal30'] as $field) foreach($hits as $h) if($norm($h[$field]??'')===$norm($symbol)) return [(string)$h['insCode'],fb_fa((string)$h['lVal18AFC'])];
+        if(count($hits)===1) return [(string)$hits[0]['insCode'],fb_fa((string)$hits[0]['lVal18AFC'])];
+        return [null,$hits];
+    };
+    $pct=fn($a,$b)=>($a && $b)?round(($a-$b)/$b*100,2):null;
+    $num=fn($x)=>is_numeric($x)?(0+(float)$x):null;
+    if($tool==='search'){
+        if($symbol==='') throw new InvalidArgumentException('نام نماد یا شرکت را وارد کنید.');
+        $d=fb_http_json($base.'/Instrument/GetInstrumentSearch/'.rawurlencode($symbol));
+        return ['matches'=>array_map(fn($x)=>['symbol'=>fb_fa((string)($x['lVal18AFC']??'')),'name'=>fb_fa((string)($x['lVal30']??'')),'ins_code'=>$x['insCode']??null,'market'=>fb_fa((string)($x['flowTitle']??''))],array_slice($d['instrumentSearch']??[],0,max(1,min(30,(int)($p['limit']??10)))))];
+    }
+    if($tool==='indices'){
+        $o=fb_http_json($base.'/MarketData/GetMarketOverview/1')['marketOverview']??[];
+        $idx=fb_http_json($base.'/Index/GetIndexB1LastAll/All/1')['indexB1']??[];
+        $q=fb_fa((string)($p['query']??'')); if($q!=='') $idx=array_values(array_filter($idx,fn($x)=>mb_stripos(fb_fa((string)($x['lVal30']??'')),$q)!==false));
+        usort($idx,fn($a,$b)=>(float)($b['xVarIdxJRfV']??0)<=>(float)($a['xVarIdxJRfV']??0));
+        return ['market'=>['state'=>$o['marketStateTitle']??null,'total_index'=>$num($o['indexLastValue']??null),'total_index_change'=>$num($o['indexChange']??null),'equal_weight_index'=>$num($o['indexEqualWeightedLastValue']??null),'trades'=>$num($o['marketActivityZTotTran']??null),'volume'=>$num($o['marketActivityQTotTran']??null),'value_rial'=>$num($o['marketActivityQTotCap']??null)],'indices'=>array_map(fn($x)=>['name'=>fb_fa((string)($x['lVal30']??'')),'ins_code'=>$x['insCode']??null,'value'=>$num($x['xDrNivJIdx004']??null),'change_pct'=>$num($x['xVarIdxJRfV']??null)],array_slice($idx,0,60))];
+    }
+    if($tool==='movers'){
+        $market=(string)($p['market']??'bourse'); $map=['bourse'=>1,'farabourse'=>2,'rights'=>4,'bonds'=>5];
+        if(!isset($map[$market])) throw new InvalidArgumentException('بازار نامعتبر است.');
+        $d=fb_http_json($base.'/ClosingPrice/GetMarketWatch',['market'=>0,'paperTypes[0]'=>$map[$market],'showTraded'=>'true','withBestLimits'=>'false','hEven'=>0,'RefID'=>0]);
+        $rows=array_values(array_filter($d['marketwatch']??[],fn($r)=>!empty($r['pdv'])));
+        $sort=(string)($p['sort_by']??'gain'); $key=['gain'=>'change','loss'=>'change','volume'=>'qtj','value'=>'qtc','trades'=>'ztt'][$sort]??'change';
+        usort($rows,function($a,$b)use($key,$sort,$pct){$av=$key==='change'?($pct($a['pdv']??null,$a['py']??null)??0):($a[$key]??0);$bv=$key==='change'?($pct($b['pdv']??null,$b['py']??null)??0):($b[$key]??0);return ($sort==='loss'?$av<=>$bv:$bv<=>$av);});
+        return ['unit'=>'rial','rows'=>array_map(fn($r)=>['symbol'=>fb_fa((string)($r['lva']??'')),'name'=>fb_fa((string)($r['lvc']??'')),'ins_code'=>$r['insCode']??null,'last'=>$num($r['pdv']??null),'change_pct'=>$pct($r['pdv']??null,$r['py']??null),'volume'=>$num($r['qtj']??null),'trades'=>$num($r['ztt']??null),'value_rial'=>$num($r['qtc']??null),'limit_up'=>isset($r['pMax'])&&$r['pdv']>=$r['pMax'],'limit_down'=>isset($r['pMin'])&&$r['pdv']<=$r['pMin']],array_slice($rows,0,30))];
+    }
+    [$ins,$ticker]=$resolve();
+    if(!$ins) throw new RuntimeException('نماد پیدا نشد یا چند نتیجه مشابه دارد؛ ابتدا جست‌وجوی نماد را اجرا کنید.');
+    if($tool==='quote'){
+        $i=fb_http_json($base.'/Instrument/GetInstrumentInfo/'.$ins)['instrumentInfo']??[];
+        $c=fb_http_json($base.'/ClosingPrice/GetClosingPriceInfo/'.$ins)['closingPriceInfo']??[];
+        return ['symbol'=>$ticker??fb_fa((string)($i['lVal18AFC']??'')),'name'=>fb_fa((string)($i['lVal30']??'')),'unit'=>'rial','date'=>$c['dEven']??null,'last'=>$num($c['pDrCotVal']??null),'close'=>$num($c['pClosing']??null),'yesterday'=>$num($c['priceYesterday']??null),'change_pct'=>$pct($c['pDrCotVal']??null,$c['priceYesterday']??null),'open'=>$num($c['priceFirst']??null),'low'=>$num($c['priceMin']??null),'high'=>$num($c['priceMax']??null),'volume'=>$num($c['qTotTran5J']??null),'trades'=>$num($c['zTotTran']??null),'value_rial'=>$num($c['qTotCap']??null),'shares'=>$num($i['zTitad']??null),'sector'=>fb_fa((string)($i['sector']['lSecVal']??''))];
+    }
+    if($tool==='orderbook'){
+        $levels=fb_http_json($base.'/BestLimits/'.$ins)['bestLimits']??[];
+        return ['symbol'=>$ticker,'unit'=>'rial','levels'=>array_map(fn($b)=>['level'=>$b['number']??null,'bid_price'=>$num($b['pMeDem']??null),'bid_volume'=>$num($b['qTitMeDem']??null),'bid_orders'=>$b['zOrdMeDem']??null,'ask_price'=>$num($b['pMeOf']??null),'ask_volume'=>$num($b['qTitMeOf']??null),'ask_orders'=>$b['zOrdMeOf']??null],$levels)];
+    }
+    if($tool==='history'||$tool==='flow'){
+        $days=max(1,min($tool==='flow'?10:50,(int)($p['days']??20)));
+        $rows=fb_http_json($base.'/ClosingPrice/GetClosingPriceDailyList/'.$ins.'/'.$days)['closingPriceDaily']??[];
+        if($tool==='history') return ['symbol'=>$ticker,'unit'=>'rial','rows'=>array_map(fn($r)=>['date'=>$r['dEven']??null,'open'=>$num($r['priceFirst']??null),'high'=>$num($r['priceMax']??null),'low'=>$num($r['priceMin']??null),'close'=>$num($r['pClosing']??null),'last'=>$num($r['pDrCotVal']??null),'volume'=>$num($r['qTotTran5J']??null),'trades'=>$num($r['zTotTran']??null),'value_rial'=>$num($r['qTotCap']??null)],$rows)];
+        $out=[]; foreach($rows as $r){$d=(string)($r['dEven']??'');if(!$d)continue;$c=fb_http_json($base.'/ClientType/GetClientTypeHistory/'.$ins.'/'.$d)['clientType']??null;if($c)$out[]=['date'=>$d,'real_buy_volume'=>$num($c['buy_I_Volume']??null),'real_sell_volume'=>$num($c['sell_I_Volume']??null),'legal_buy_volume'=>$num($c['buy_N_Volume']??null),'legal_sell_volume'=>$num($c['sell_N_Volume']??null),'net_real_volume'=>$num(($c['buy_I_Volume']??0)-($c['sell_I_Volume']??0))];}
+        return ['symbol'=>$ticker,'unit'=>'rial','rows'=>$out];
+    }
+    if($tool==='index_history'){
+        $index=fb_fa((string)($p['index']??'شاخص کل'));$idx=fb_http_json($base.'/Index/GetIndexB1LastAll/All/1')['indexB1']??[];
+        $hits=array_values(array_filter($idx,fn($x)=>mb_stripos(fb_fa((string)($x['lVal30']??'')),$index)!==false));
+        if(!$hits) throw new RuntimeException('شاخص موردنظر پیدا نشد.');
+        $code=$hits[0]['insCode'];$history=fb_http_json($base.'/Index/GetIndexB2History/'.$code)['indexB2']??[];
+        return ['index'=>fb_fa((string)$hits[0]['lVal30']),'rows'=>array_slice($history,-max(2,min(100,(int)($p['days']??30))))];
+    }
+    throw new InvalidArgumentException('ابزار TSETMC ناشناخته است.');
+}
+function fb_codal(string $tool, array $p): array {
+    $base='https://search.codal.ir/api/search';
+    if($tool==='company'){
+        $d=fb_http_json($base.'/v1/companies',[],25);
+        $q=fb_fa((string)($p['query']??''));$norm=fn($v)=>preg_replace('/[\s‌]+/u','',mb_strtolower(fb_fa((string)$v)));
+        $rows=array_values(array_filter($d,fn($x)=>$q!==''&&(mb_stripos(fb_fa((string)($x['sy']??'')),$q)!==false||mb_stripos(fb_fa((string)($x['n']??'')),$q)!==false)));
+        return ['matched'=>count($rows),'companies'=>array_slice(array_map(fn($x)=>['symbol'=>fb_fa((string)($x['sy']??'')),'name'=>fb_fa((string)($x['n']??'')),'industry_code'=>$x['i']??null,'market_status'=>$x['st']??null,'publisher_type'=>$x['t']??null],$rows),0,50)];
+    }
+    if($tool==='categories'){
+        $d=fb_http_json($base.'/v1/categories',[],20);
+        return ['categories'=>$d];
+    }
+    if($tool==='financial_years'){
+        $sym=fb_fa((string)($p['symbol']??''));if($sym==='')throw new InvalidArgumentException('نماد ناشر را وارد کنید.');
+        return ['symbol'=>$sym,'year_ends'=>fb_http_json($base.'/v1/financialYears',['Symbol'=>$sym],20)];
+    }
+    if($tool==='search_letters'){
+        $params=['Audited'=>'true','AuditorRef'=>-1,'Category'=>(int)($p['category']??-1),'Childs'=>'true','CompanyState'=>-1,'CompanyType'=>-1,'Consolidatable'=>'true','IsNotAudited'=>'false','Length'=>(int)($p['period_months']??-1),'LetterType'=>(int)($p['letter_type']??-1),'Mains'=>'true','NotAudited'=>'true','NotConsolidatable'=>'true','PageNumber'=>max(1,(int)($p['page']??1)),'Publisher'=>'false','ReportingType'=>-1,'TracingNo'=>(int)($p['tracing_no']??-1),'search'=>'true'];
+        if(!empty($p['symbol']))$params['Symbol']=fb_fa((string)$p['symbol']);
+        if(!empty($p['title']))$params['Subject']=fb_fa((string)$p['title']);
+        if(!empty($p['from_date']))$params['FromDate']=$p['from_date'];
+        if(!empty($p['to_date']))$params['ToDate']=$p['to_date'];
+        $d=fb_http_json($base.'/v2/q',$params,20);
+        return ['total'=>$d['Total']??0,'page'=>$params['PageNumber'],'pages'=>$d['Page']??1,'letters'=>array_map(fn($x)=>['tracing_no'=>$x['TracingNo']??null,'symbol'=>fb_fa((string)($x['Symbol']??'')),'company'=>fb_fa((string)($x['CompanyName']??'')),'title'=>fb_fa((string)($x['Title']??'')),'sent'=>$x['SentDateTime']??null,'url'=>isset($x['Url'])?'https://www.codal.ir'.$x['Url']:null,'pdf'=>!empty($x['HasPdf'])?('https://www.codal.ir'.($x['PdfUrl']??'')):null],$d['Letters']??[])];
+    }
+    if($tool==='letter') throw new RuntimeException('خواندن جداول HTML و پیوست‌های کدال در مرحله بعدی آداپتور اضافه می‌شود؛ فعلاً از لینک صفحه/PDF خروجی جست‌وجو استفاده کنید.');
+    throw new InvalidArgumentException('ابزار کدال ناشناخته است.');
+}
+function fb_crypto(string $tool, array $p): array {
+    $exchanges=[
+      ['id'=>'nobitex','name'=>'نوبیتکس','unit'=>'ریال','orderbook'=>true,'trades'=>true,'candles'=>true],
+      ['id'=>'wallex','name'=>'والکس','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
+      ['id'=>'bitpin','name'=>'بیت‌پین','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
+      ['id'=>'ramzinex','name'=>'رمزینکس','unit'=>'ریال','orderbook'=>true,'trades'=>true,'candles'=>true],
+      ['id'=>'tabdeal','name'=>'تبدیل','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
+      ['id'=>'ompfinex','name'=>'او‌ام‌پی فینکس','unit'=>'ریال','orderbook'=>true,'trades'=>false,'candles'=>true],
+      ['id'=>'exir','name'=>'اکسیر','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
+      ['id'=>'bit24','name'=>'بیت۲۴','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
+      ['id'=>'abantether','name'=>'آبان‌تتر','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>true],
+      ['id'=>'kifpool','name'=>'کیف پول من','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'okex','name'=>'اوکی‌اکسچنج','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'tetherland','name'=>'تترلند','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>false]
+    ];
+    if($tool==='exchanges') return ['exchanges'=>$exchanges,'note'=>'این فهرست قابلیت‌های اعلام‌شده در مخزن مرجع را نشان می‌دهد؛ اتصال قیمت زنده هر صرافی هنوز باید پیاده‌سازی و روی هاست آزمایش شود.'];
+    throw new RuntimeException('اتصال زنده این عملیات رمزارز هنوز در این نسخه فعال نشده است؛ فهرست ۱۲ صرافی و قابلیت‌های هرکدام در دسترس است.');
+}
+function fb_dispatch_module(string $module,string $tool,array $p): array {
+    $ttl=$module==='codal'?3600:($module==='crypto'?30:15);
+    return fb_cache_module($module.':'.$tool.':'.http_build_query($p),$ttl,function()use($module,$tool,$p){
+        if($module==='tsetmc')return fb_tsetmc($tool,$p);
+        if($module==='codal')return fb_codal($tool,$p);
+        if($module==='crypto')return fb_crypto($tool,$p);
+        throw new InvalidArgumentException('ماژول ناشناخته است.');
+    });
+}
