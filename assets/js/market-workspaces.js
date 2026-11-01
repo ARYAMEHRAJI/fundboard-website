@@ -7,7 +7,7 @@ async function loadBoards(){if(boards.length)return boards;const j=await get('ap
 function base(title,desc){const h=$('#dynamicView');if(!h)return null;h.innerHTML='<div class="view-intro"><h2>'+title+'</h2><p>'+desc+'</p></div><div id="workspaceBody"><div class="data-empty">در حال دریافت داده‌های متصل…</div></div>';return $('#workspaceBody')}
 function table(rows,profile=true){if(!rows.length)return '<div class="data-empty">داده‌ای برای نمایش از منبع متصل دریافت نشد.</div>';return '<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>نام دارایی</th><th>قیمت</th><th>تغییر</th><th>واحد</th><th>منبع</th><th></th></tr></thead><tbody>'+rows.map(x=>'<tr><td><b>'+esc(x.name||x.title||x.slug)+'</b><small class="table-sub">'+esc(x.symbol||x.slug||'')+'</small></td><td>'+fmt(x.price)+'</td><td class="'+(Number(x.change)>=0?'positive':'negative')+'">'+(Number(x.change)>0?'+':'')+fmt(x.change)+'٪</td><td>'+esc(x.unit||'—')+'</td><td>'+esc(x._board||'Tindex')+'</td><td>'+(profile&&(x.ins_code||x.slug)?'<button class="text-btn" data-open-fund="'+esc(x.ins_code||x.slug)+'">پروفایل ←</button>':'')+'</td></tr>').join('')+'</tbody></table></div>'}
 
-function renderIntelligence(){
+async function renderIntelligence(){
  intelChart?.dispose();intelChart=null;
  const body=base('اتاق هوش بازار','نمای یکپارچه از نقشه بازار TSETMC، اطلاعیه‌های رسمی کدال و شاخص‌های کلان Tindex؛ داده‌های هر بخش با منبع و وضعیت دریافت نمایش داده می‌شوند.');
  if(!body)return;
