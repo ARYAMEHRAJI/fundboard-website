@@ -17,7 +17,7 @@ async function search(q){
   const funds=j.results?.funds||[],stocks=j.results?.stocks||[];
   let html='';
   if(stocks.length)html+='<div class="search-group-title">سهام و نمادهای بورسی · TSETMC</div>'+stocks.map(x=>'<button class="search-result" data-kind="stock" data-id="'+esc(x.symbol)+'"><b>'+esc(x.symbol)+'</b><span>'+esc(x.name)+'</span><small>سهم</small></button>').join('');
-  if(funds.length)html+='<div class="search-group-title">صندوق‌ها · TSETMC</div>'+funds.slice(0,20).map(x=>'<button class="search-result" data-kind="fund" data-id="'+esc(x.ins_code||x.slug)+'" data-reg-no="'+esc(x.reg_no||'')+'" data-reg-no="'+esc(x.reg_no||'')+'"><b>'+esc(x.name)+'</b><span>'+esc(x.symbol||x.slug)+'</span><small>'+esc(x.board||'صندوق')+'</small></button>').join('');
+  if(funds.length)html+='<div class="search-group-title">صندوق‌ها · TSETMC</div>'+funds.slice(0,20).map(x=>'<button class="search-result" data-kind="fund" data-id="'+esc(x.ins_code||x.slug)+'" data-reg-no="'+esc(x.reg_no||'')+'"><b>'+esc(x.name)+'</b><span>'+esc(x.symbol||x.slug)+'</span><small>'+esc(x.board||'صندوق')+'</small></button>').join('');
   box.innerHTML=html||'<div class="search-message">نتیجه‌ای پیدا نشد. املای نماد یا نام را تغییر بده.</div>';
   box.querySelectorAll('[data-kind]').forEach(b=>b.addEventListener('click',()=>openProfile(b.dataset.kind,b.dataset.id,b.dataset.regNo||'')));
  }catch(e){box.innerHTML='<div class="search-message">'+esc(e.message)+'</div>'}
