@@ -82,7 +82,7 @@ $('#exportBtn').addEventListener('click',()=>{
  const table=$('#dynamicView table')||$('.lower-grid table')||$('#boardRows table')||$('#bridgeRows table');
  if(!table){toast('ابتدا جدولی با داده دریافت‌شده باز کنید.');return}
  const csv=[...table.rows].map(row=>[...row.cells].map(cell=>'"'+cell.innerText.replace(/"/g,'""').replace(/\s+/g,' ').trim()+'"').join(',')).join('\r\n');
- const blob=new Blob(['\\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+ const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='fundboard-export.csv';a.click();URL.revokeObjectURL(url);toast('فایل CSV آماده شد.');
 });
 $$('[data-period]').forEach(b=>b.addEventListener('click',()=>{$$('[data-period]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');toast('بازه انتخاب شد. برای دریافت تاریخچه کامل، منبع داده باید متصل باشد.')}));
