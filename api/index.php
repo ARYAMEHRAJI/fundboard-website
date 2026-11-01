@@ -83,6 +83,16 @@ if ($action === 'search') {
     $seen=[];$hits['funds']=array_values(array_filter($hits['funds'],static function($x)use(&$seen){$k=(string)($x['ins_code']??$x['symbol']??$x['name']);if(isset($seen[$k]))return false;$seen[$k]=true;return true;}));
     respond(['success'=>true,'status'=>($hits['funds']||$hits['stocks'])?'partial':'empty','query'=>$q,'results'=>$hits,'note'=>'جستجو در فهرست رسمی صندوق‌های TSETMC و نمادهای بازار انجام می‌شود.']);
 }
+if ($action === 'letter') {
+    $trace = filter_input(INPUT_GET,'tracing_no',FILTER_VALIDATE_INT);
+    if (!$trace || $trace < 1) respond(['success'=>false,'message'=>'شماره پیگیری معتبر نیست.'],400);
+    try {
+        $letter = fb_dispatch_module('codal','letter',['tracing_no'=>$trace]);
+        respond(['success'=>true,'status'=>'live','letter'=>$letter,'fetched_at'=>date(DATE_ATOM)]);
+    } catch (Throwable $e) {
+        respond(['success'=>false,'status'=>'source_error','message'=>$e->getMessage()],502);
+    }
+}
 if ($action === 'profile') {
     $kind = (string)($_GET['kind'] ?? '');
     $id = trim((string)($_GET['id'] ?? ''));
