@@ -114,7 +114,8 @@ if ($action === 'profile') {
             $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>180,'1y'=>365,'all'=>500][$range];
             $hist = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>$days]);
             $history = $hist['rows']??[];
-            $research = fb_build_research('fund',$id,$history,(string)($fundData['symbol']??$fundData['instrument_info']['lVal18AFC']??$id));
+            $researchHistory = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>365]);
+            $research = fb_build_research('fund',$id,$researchHistory['rows']??$history,(string)($fundData['symbol']??$fundData['instrument_info']['lVal18AFC']??$id));
             $disclosures = array_slice($research['events']??[],0,8);
             $profile = $fundData;
             $profile['last'] = $fundData['quote']['last'] ?? null;
