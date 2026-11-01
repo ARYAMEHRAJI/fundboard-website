@@ -93,8 +93,10 @@ function fb_tsetmc(string $tool, array $p): array {
         $sector=max(0,(int)($p['sector']??0));
         $type=max(1,min(4,(int)($p['type']??1)));
         $d=fb_http_json($base.'/ClosingPrice/GetMarketMap?market='.$market.'&size='.$size.'&sector='.$sector.'&typeSelected='.$type.'&hEven=0',[],20);
+        $raw=$d['marketMap']??$d['items']??$d;
+        if(!is_array($raw))$raw=[];
         $items=[];
-        foreach($d as $x){
+        foreach($raw as $x){if(!is_array($x))continue;
             $items[]=['ins_code'=>$x['insCode']??null,'symbol'=>fb_fa((string)($x['lVal18AFC']??'')),'name'=>fb_fa((string)($x['lVal30']??'')),'sector'=>fb_fa((string)($x['lSecVal']??'')),'close'=>$num($x['pClosing']??null),'last'=>$num($x['pDrCotVal']??null),'change_pct'=>$num($x['priceChangePercent']??$x['percent']??null),'volume'=>$num($x['qTotTran5J']??null),'value_rial'=>$num($x['qTotCap']??null),'color'=>$x['color']??null];
         }
         return ['items'=>$items,'count'=>count($items),'market'=>$market,'type'=>$type,'source'=>'TSETMC Market Map'];
