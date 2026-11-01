@@ -26,6 +26,7 @@ date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
   <button class="nav-item" data-view="gold"><i>◇</i> طلا و ارز</button>
   <button class="nav-item" data-view="crypto"><i>₿</i> رمزارزها</button>
   <div class="side-caption">ابزارهای تحلیلی</div>
+  <button class="nav-item" data-view="intelligence"><i>✧</i> اتاق هوش بازار</button>
   <button class="nav-item" data-view="screener"><i>⌕</i> دیده‌بان و فیلتر</button>
   <button class="nav-item" data-view="compare"><i>⇄</i> مقایسه دارایی‌ها</button>
   <button class="nav-item" data-view="portfolio"><i>◉</i> پرتفوی من</button>
