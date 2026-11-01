@@ -14,18 +14,20 @@ async function renderIntelligence(){
  body.innerHTML='<div id="intelStatus" class="intel-status">در حال همگام‌سازی منابع داده…</div><div id="intelMetrics" class="intel-metrics"></div><div class="intel-grid"><section class="intel-card intel-map"><div class="intel-card-head"><div><h3>نقشه حرارتی بازار</h3><p>اندازه هر خانه بر اساس ارزش معاملات دریافتی</p></div><span>TSETMC</span></div><div id="intelTreemap" class="intel-treemap"><div class="data-empty">در انتظار داده بازار…</div></div></section><section class="intel-card"><div class="intel-card-head"><div><h3>نمادهای پرتحرک</h3><p>بیشترین رشد و افت در تابلو</p></div><span>TSETMC</span></div><div id="intelMovers"><div class="data-empty">در حال دریافت…</div></div></section></div><section class="intel-card intel-events"><div class="intel-card-head"><div><h3>رادار اطلاعیه‌های ناشران</h3><p>آخرین رویدادهای منتشرشده در کدال</p></div><span>CODAL</span></div><div id="intelCodal" class="intel-event-grid"><div class="data-empty">در حال دریافت اطلاعیه‌ها…</div></div></section><div class="intel-footnote">این صفحه داده‌های چند منبع را کنار هم قرار می‌دهد؛ پرچم‌ها و نماهای تحلیلی ابزار پژوهش هستند، نه پیشنهاد خرید یا فروش. در صورت قطع دسترسی هاست به یک منبع، همان بخش با وضعیت خطا مشخص می‌شود.</div>';
  const jobs=[
   ['market',get('api/?action=module&module=tsetmc&tool=market_map&market=0&type=1&limit=1500')],
-  ['movers',get('api/?action=module&module=tsetmc&tool=movers&market=bourse&sort_by=gain')],
+  ['movers_gain',get('api/?action=module&module=tsetmc&tool=movers&market=bourse&sort_by=gain')],
+  ['movers_loss',get('api/?action=module&module=tsetmc&tool=movers&market=bourse&sort_by=loss')],
   ['codal',get('api/?action=module&module=codal&tool=search_letters&page=1')],
   ['overview',get('api/?action=overview')]
  ];
  const result=await Promise.allSettled(jobs.map(x=>x[1]));
  const data={};jobs.forEach((x,n)=>{if(result[n].status==='fulfilled')data[x[0]]=result[n].value});
- const status=[];jobs.forEach((x,n)=>status.push((result[n].status==='fulfilled'?'✓ ':'! ')+({market:'نقشه TSETMC',movers:'تابلو TSETMC',codal:'کدال',overview:'Tindex'}[x[0]])));
+ const status=[];jobs.forEach((x,n)=>status.push((result[n].status==='fulfilled'?'✓ ':'! ')+({market:'نقشه TSETMC',movers_gain:'بیشترین رشد TSETMC',movers_loss:'بیشترین افت TSETMC',codal:'کدال',overview:'Tindex'}[x[0]])));
  $('#intelStatus').textContent=status.join('  ·  ');
  const metrics=data.overview?.metrics||[];
  $('#intelMetrics').innerHTML=metrics.map(x=>'<div class="intel-metric"><small>'+esc(x.label||x.key)+'</small><b>'+fmt(x.price??x.value)+'</b><span>'+esc(x.unit||'')+' '+(x.change==null?'':(Number(x.change)>=0?'+':'')+fmt(x.change)+'٪')+'</span></div>').join('')||'<div class="data-empty">شاخص‌های Tindex در دسترس نیستند؛ توکن یا اتصال هاست را بررسی کن.</div>';
- const movers=data.movers?.data?.rows||[];
- $('#intelMovers').innerHTML=movers.length?'<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>نماد</th><th>آخرین</th><th>تغییر٪</th><th>ارزش (ریال)</th></tr></thead><tbody>'+movers.slice(0,12).map(x=>'<tr><td><b>'+esc(x.symbol)+'</b></td><td>'+fmt(x.last)+'</td><td class="'+(Number(x.change_pct)>=0?'positive':'negative')+'">'+fmt(x.change_pct)+'٪</td><td>'+fmt(x.value_rial)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="data-empty">تابلوی نمادهای پرتحرک از TSETMC دریافت نشد.</div>';
+ const gain=data.movers_gain?.data?.rows||[],loss=data.movers_loss?.data?.rows||[];
+ const moverTable=(rows,label)=>rows.length?'<h4 class="intel-mover-title">'+label+'</h4><div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>نماد</th><th>آخرین</th><th>تغییر٪</th><th>ارزش (ریال)</th></tr></thead><tbody>'+rows.slice(0,8).map(x=>'<tr><td><b>'+esc(x.symbol)+'</b></td><td>'+fmt(x.last)+'</td><td class="'+(Number(x.change_pct)>=0?'positive':'negative')+'">'+fmt(x.change_pct)+'٪</td><td>'+fmt(x.value_rial)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="data-empty">'+label+' دریافت نشد.</div>';
+ $('#intelMovers').innerHTML=moverTable(gain,'بیشترین رشد')+moverTable(loss,'بیشترین افت');
  const items=data.market?.data?.items||[];
  const mapEl=$('#intelTreemap');
  if(items.length&&window.echarts){intelChart=echarts.init(mapEl);intelChart.setOption({tooltip:{formatter:x=>'<b>'+esc(x.data.name)+'</b><br>'+esc(x.data.sector||'')+'<br>ارزش معاملات: '+fmt(x.data.value)+' ریال<br>تغییر: '+fmt(x.data.change)+'٪'},series:[{type:'treemap',data:items.map(x=>({name:x.symbol||x.name||'—',value:Math.max(1,Number(x.value_rial||0)),sector:x.sector,change:x.change_pct,itemStyle:{color:x.change_pct==null?'#53647b':Number(x.change_pct)>=0?'#167b68':'#a34f5e'}})),label:{show:true,formatter:'{b}',color:'#fff'},breadcrumb:{show:false},itemStyle:{borderColor:'#101b2b',borderWidth:2,gapWidth:2}}]})}
