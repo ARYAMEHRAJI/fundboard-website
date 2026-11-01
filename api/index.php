@@ -64,7 +64,7 @@ if ($action === 'search') {
     if ($q === '' || mb_strlen($q) < 2 || mb_strlen($q) > 80) respond(['success'=>false,'status'=>'invalid_parameter','message'=>'حداقل دو حرف وارد کنید.'],400);
     $hits = ['funds'=>[],'stocks'=>[]];
     try {
-        $matches = fb_tsetmc('search',['query'=>$q,'limit'=>20])['matches'] ?? [];
+        $matches = fb_dispatch_module('tsetmc','search',['query'=>$q,'limit'=>20])['matches'] ?? [];
         foreach ($matches as $item) {
             if (($item['asset_type'] ?? '') === 'fund') $hits['funds'][] = $item;
             else $hits['stocks'][] = $item;
@@ -79,9 +79,9 @@ if ($action === 'profile') {
     if (!in_array($range,['1d','1w','1m','3m','6m','1y','all'],true) || $id === '' || strlen($id)>100) respond(['success'=>false,'status'=>'invalid_parameter','message'=>'پارامترهای پروفایل نامعتبر است.'],400);
     try {
         if ($kind === 'stock') {
-            $quote = fb_tsetmc('quote',['symbol'=>$id]);
+            $quote = fb_dispatch_module('tsetmc','quote',['symbol'=>$id]);
             $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>180,'1y'=>365,'all'=>500][$range];
-            $hist = fb_tsetmc('history',['symbol'=>$id,'days'=>$days]);
+            $hist = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>$days]);
             respond(['success'=>true,'status'=>'live','kind'=>'stock','profile'=>$quote,'history'=>$hist['rows']??[],'fetched_at'=>date(DATE_ATOM)]);
         }
         if ($kind === 'fund') {
@@ -89,7 +89,7 @@ if ($action === 'profile') {
             $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>100,'1y'=>100,'all'=>100][$range];
             $hist = fb_tsetmc('history',['symbol'=>$id,'days'=>$days]);
             $disclosures = [];
-            try { $letters = fb_codal('search_letters',['symbol'=>$id,'page'=>1]); $disclosures = array_slice($letters['letters']??[],0,8); } catch (Throwable $e) {}
+            try { $letters = fb_dispatch_module('codal','search_letters',['symbol'=>$id,'page'=>1]); $disclosures = array_slice($letters['letters']??[],0,8); } catch (Throwable $e) {}
             respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$quote,'history'=>$hist['rows']??[],'disclosures'=>$disclosures,'data_scope'=>'ETF market quote and price history from TSETMC; NAV and holdings require a dedicated fund data provider.','fetched_at'=>date(DATE_ATOM)]);
         }
         respond(['success'=>false,'status'=>'invalid_parameter','message'=>'نوع دارایی پشتیبانی نمی‌شود.'],400);
