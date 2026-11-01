@@ -24,6 +24,7 @@ return [
         'tindex_token' => '',
         // Optional server-side HTTP bridge URLs. Do not put MCP stdio commands here.
         'tsetmc_bridge_url' => '',
+        'funds_bridge_url' => '',
         'codal_bridge_url' => '',
         'crypto_bridge_url' => '',
         'bridge_bearer_token' => '',
