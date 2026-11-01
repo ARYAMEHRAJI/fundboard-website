@@ -55,6 +55,8 @@ function tindexGet(array $config, string $path): array {
     return ['success'=>true,'status'=>'live','data'=>$json['data'] ?? $json,'fetched_at'=>date(DATE_ATOM)];
 }
 
+require_once __DIR__ . '/modules.php';
+
 $action = preg_replace('/[^a-z_]/', '', (string)($_GET['action'] ?? 'overview'));
 $ttl = max(20, min(600, (int)($config['cache']['ttl'] ?? 90)));
 $cacheDir = $root . '/storage/cache';
@@ -96,6 +98,23 @@ if ($action === 'category') {
     $slug = (string)($_GET['slug'] ?? '');
     if (!preg_match('/^[A-Za-z0-9_-]{1,80}$/', $slug)) respond(['success'=>false,'status'=>'invalid_parameter'], 400);
     respond($fetch('/api/public/indicators/by-category/' . rawurlencode($slug)));
+}
+
+if ($action === 'module') {
+    $module = preg_replace('/[^a-z]/', '', (string)($_GET['module'] ?? ''));
+    $tool = preg_replace('/[^a-z_]/', '', (string)($_GET['tool'] ?? ''));
+    if (!in_array($module, ['tsetmc','codal','crypto'], true) || $tool === '') {
+        respond(['success'=>false,'status'=>'invalid_parameter','message'=>'ماژول یا ابزار نامعتبر است.'],400);
+    }
+    $params = $_GET;
+    unset($params['action'],$params['module'],$params['tool']);
+    try {
+        $data = fb_dispatch_module($module,$tool,$params);
+        respond(['success'=>true,'status'=>'live','module'=>$module,'tool'=>$tool,'data'=>$data,'fetched_at'=>date(DATE_ATOM)]);
+    } catch (Throwable $e) {
+        $status = $e instanceof InvalidArgumentException ? 400 : 502;
+        respond(['success'=>false,'status'=>'upstream_error','module'=>$module,'tool'=>$tool,'message'=>$e->getMessage()],$status);
+    }
 }
 
 if ($action === 'bridge') {
