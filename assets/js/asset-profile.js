@@ -66,7 +66,8 @@ function renderResearch(){
  const method=$('#researchMethod');if(method)method.textContent=r.methodology||'شاخص‌های محاسباتی بر اساس داده‌های موجود منبع؛ در صورت ناقص بودن تاریخچه، دوره محاسبه کوتاه‌تر خواهد بود.';
 }
 function renderCharts(){
- destroyCharts();const rows=Array.isArray(window.__fbHistory)?window.__fbHistory:[];
+ [chart,volumeChart,rsiChart].forEach(c=>{if(c)c.dispose()});chart=volumeChart=rsiChart=null;
+ const rows=Array.isArray(window.__fbHistory)?window.__fbHistory:[];
  const stock=kind==='stock';
  const labels=rows.map(x=>faDate(x.date??x.dEven??''));
  const closes=rows.map(x=>Number(x.close??x.pClosing??x.value??x));
