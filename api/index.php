@@ -58,6 +58,54 @@ function tindexGet(array $config, string $path): array {
 require_once __DIR__ . '/modules.php';
 
 $action = preg_replace('/[^a-z_]/', '', (string)($_GET['action'] ?? 'overview'));
+
+if ($action === 'search') {
+    $q = trim((string)($_GET['q'] ?? ''));
+    if ($q === '' || mb_strlen($q) < 2 || mb_strlen($q) > 80) respond(['success'=>false,'status'=>'invalid_parameter','message'=>'حداقل دو حرف وارد کنید.'],400);
+    $hits = ['funds'=>[],'stocks'=>[]];
+    try {
+        $boards = tindexGet($config, '/api/public/boards');
+        if (($boards['status'] ?? '') === 'live') {
+            foreach ((array)$boards['data'] as $board) foreach ((array)($board['rows'] ?? []) as $row) {
+                $name = (string)($row['name'] ?? $row['title'] ?? '');
+                $slug = (string)($row['slug'] ?? '');
+                if ($name !== '' && (mb_stripos($name,$q)!==false || mb_stripos($slug,$q)!==false)) {
+                    $hits['funds'][] = ['name'=>$name,'slug'=>$slug,'price'=>$row['price']??null,'change'=>$row['change']??null,'unit'=>$row['unit']??null,'board'=>$board['key']??null];
+                }
+            }
+        }
+    } catch (Throwable $e) {}
+    try {
+        $stocks = fb_tsetmc('search',['query'=>$q,'limit'=>12]);
+        $hits['stocks'] = $stocks['matches'] ?? [];
+    } catch (Throwable $e) {}
+    respond(['success'=>true,'status'=>($hits['funds']||$hits['stocks'])?'partial':'empty','query'=>$q,'results'=>$hits,'note'=>'نتایج صندوق‌ها از تابلوهای Tindex و نمادها از جست‌وجوی TSETMC گردآوری می‌شوند.']);
+}
+if ($action === 'profile') {
+    $kind = (string)($_GET['kind'] ?? '');
+    $id = trim((string)($_GET['id'] ?? ''));
+    $range = (string)($_GET['range'] ?? '1m');
+    if (!in_array($range,['1d','1w','1m','3m','6m','1y','all'],true) || $id === '' || strlen($id)>100) respond(['success'=>false,'status'=>'invalid_parameter','message'=>'پارامترهای پروفایل نامعتبر است.'],400);
+    try {
+        if ($kind === 'stock') {
+            $quote = fb_tsetmc('quote',['symbol'=>$id]);
+            $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>180,'1y'=>365,'all'=>500][$range];
+            $hist = fb_tsetmc('history',['symbol'=>$id,'days'=>$days]);
+            respond(['success'=>true,'status'=>'live','kind'=>'stock','profile'=>$quote,'history'=>$hist['rows']??[],'fetched_at'=>date(DATE_ATOM)]);
+        }
+        if ($kind === 'fund') {
+            $boards = tindexGet($config,'/api/public/boards');
+            if (($boards['status']??'') !== 'live') respond($boards,502);
+            $found = null;
+            foreach ((array)$boards['data'] as $board) foreach ((array)($board['rows']??[]) as $row) if ((string)($row['slug']??'') === $id) {$found=$row;break 2;}
+            if (!$found) respond(['success'=>false,'status'=>'not_found','message'=>'صندوق در تابلوهای متصل Tindex پیدا نشد.'],404);
+            $hist = tindexGet($config,'/api/public/indicators/'.rawurlencode($id).'/history?range='.$range);
+            respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$found,'history'=>$hist['data']['points']??[],'labels'=>$hist['data']['labels']??$hist['data']['dates']??[],'history_status'=>$hist['status']??'unavailable','fetched_at'=>date(DATE_ATOM)]);
+        }
+        respond(['success'=>false,'status'=>'invalid_parameter','message'=>'نوع دارایی پشتیبانی نمی‌شود.'],400);
+    } catch (Throwable $e) { respond(['success'=>false,'status'=>'upstream_error','message'=>$e->getMessage()],502); }
+}
+
 $ttl = max(20, min(600, (int)($config['cache']['ttl'] ?? 90)));
 $cacheDir = $root . '/storage/cache';
 $fetch = static function(string $path) use ($config, $ttl, $cacheDir): array {
