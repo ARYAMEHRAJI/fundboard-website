@@ -106,8 +106,8 @@ if ($action === 'profile') {
             $fullHistory=$hist['rows']??[];$history=array_slice($fullHistory,-$days);
             $research=fb_build_research('stock',$id,$fullHistory,(string)($quote['symbol']??$id));
             $disclosures=array_slice($research['events']??[],0,12);
-            $codalCompany=[];try{$codalCompany=fb_dispatch_module('codal','company',['query'=>$quote['symbol']??$id]);}catch(Throwable $e){}
-            respond(['success'=>true,'status'=>'live','kind'=>'stock','profile'=>$quote,'history'=>$history,'disclosures'=>$disclosures,'research'=>$research,'codal_company'=>$codalCompany['companies'][0]??null,'fetched_at'=>date(DATE_ATOM)]);
+            $codalCompany=!empty($disclosures[0]['company'])?['name'=>$disclosures[0]['company']]:null;
+            respond(['success'=>true,'status'=>'live','kind'=>'stock','profile'=>$quote,'history'=>$history,'disclosures'=>$disclosures,'research'=>$research,'codal_company'=>$codalCompany,'fetched_at'=>date(DATE_ATOM)]);
         }
         if ($kind === 'fund') {
             $fundData = fb_dispatch_module('tsetmc','fund_profile',['symbol'=>$id,'reg_no'=>(string)($_GET['reg_no']??'')]);
@@ -123,7 +123,7 @@ if ($action === 'profile') {
             $profile['change_pct'] = $fundData['quote']['change_pct'] ?? null;
             $profile['volume'] = $fundData['quote']['volume'] ?? null;
             $profile['value_rial'] = $fundData['quote']['value_rial'] ?? null;
-            respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$profile,'history'=>$history,'disclosures'=>$disclosures,'research'=>$research,'fetched_at'=>date(DATE_ATOM)]);
+            respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$profile,'history'=>$history,'disclosures'=>$disclosures,'research'=>$research,'codal_company'=>!empty($disclosures[0]['company'])?['name'=>$disclosures[0]['company']]:null,'fetched_at'=>date(DATE_ATOM)]);
         }
         respond(['success'=>false,'status'=>'invalid_parameter','message'=>'نوع دارایی پشتیبانی نمی‌شود.'],400);
     } catch (Throwable $e) { respond(['success'=>false,'status'=>'upstream_error','message'=>$e->getMessage()],502); }
