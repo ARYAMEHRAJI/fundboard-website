@@ -97,4 +97,27 @@ if ($action === 'category') {
     if (!preg_match('/^[A-Za-z0-9_-]{1,80}$/', $slug)) respond(['success'=>false,'status'=>'invalid_parameter'], 400);
     respond($fetch('/api/public/indicators/by-category/' . rawurlencode($slug)));
 }
-respond(['success'=>false,'status'=>'unknown_action','allowed'=>['overview','board','movers','history','category']], 404);
+
+if ($action === 'bridge') {
+    $source = (string)($_GET['source'] ?? '');
+    $allowed = ['funds','stocks','codal','crypto'];
+    if (!in_array($source, $allowed, true)) respond(['success'=>false,'status'=>'invalid_source'], 400);
+    $url = trim((string)($config['sources'][$source . '_bridge_url'] ?? ''));
+    if ($url === '') respond(['success'=>false,'status'=>'not_configured','message'=>'سرویس واسط این بخش تنظیم نشده است.']);
+    if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['https'], true)) respond(['success'=>false,'status'=>'invalid_bridge_url'], 500);
+    $result = cached('bridge:' . $source, $ttl, static function() use ($url, $config): array {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER=>true, CURLOPT_CONNECTTIMEOUT=>7, CURLOPT_TIMEOUT=>20,
+            CURLOPT_FOLLOWLOCATION=>false, CURLOPT_SSL_VERIFYPEER=>true, CURLOPT_SSL_VERIFYHOST=>2,
+            CURLOPT_HTTPHEADER=>['Accept: application/json','Authorization: Bearer '.($config['sources']['bridge_bearer_token'] ?? '')]
+        ]);
+        $body = curl_exec($ch); $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+        $json = is_string($body) ? json_decode($body, true) : null;
+        if ($http < 200 || $http >= 300 || !is_array($json)) return ['success'=>false,'status'=>'bridge_error','message'=>'سرویس واسط پاسخ معتبر نداد.'];
+        return ['success'=>true,'status'=>'live','data'=>$json['data'] ?? $json,'fetched_at'=>date(DATE_ATOM)];
+    }, $cacheDir);
+    respond($result);
+}
+
+respond(['success'=>false,'status'=>'unknown_action','allowed'=>['overview','board','movers','history','category','bridge']], 404);
