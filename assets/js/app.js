@@ -18,8 +18,8 @@ function addChart(el,opt){if(!el||!window.echarts)return null;const c=echarts.in
 function drawOverviewCharts(){
  charts.forEach(c=>c.dispose());charts=[];
  const ax={axisLine:{lineStyle:{color:'#26364d'}},axisLabel:{color:'#8090a8',fontFamily:'Vazirmatn',fontSize:9},splitLine:{lineStyle:{color:'rgba(130,150,180,.10)'}}};
- addChart($('#mainChart'),{tooltip:{trigger:'axis',backgroundColor:'#1b2940',textStyle:{color:'#eef3fc',fontFamily:'Vazirmatn'}},grid:{left:35,right:12,top:15,bottom:25},xAxis:{type:'category',boundaryGap:false,data:['ش','ی','د','س','چ','پ','ج','ش','ی','د','س','ی'],...ax},yAxis:{type:'value',...ax},series:[{name:'روند نمونه',type:'line',smooth:true,symbol:'none',data:[18,21,19,24,22,28,26,31,29,35,33,38],lineStyle:{width:3,color:'#9486ff'},areaStyle:{opacity:.08,color:'#9486ff'}},{name:'میانگین نمونه',type:'line',smooth:true,symbol:'none',data:[17,18,19,20,22,23,25,26,28,29,31,33],lineStyle:{type:'dashed',color:'#46c9a0',width:2}}]});
- addChart($('#allocationChart'),{tooltip:{trigger:'item'},series:[{type:'pie',radius:['62%','82%'],center:['50%','48%'],label:{show:false},itemStyle:{borderColor:'#111b2c',borderWidth:4},data:[{value:38,name:'سهام (نمونه)',itemStyle:{color:'#8878f5'}},{value:29,name:'درآمد ثابت (نمونه)',itemStyle:{color:'#46c9a0'}},{value:21,name:'طلا (نمونه)',itemStyle:{color:'#e8b85f'}},{value:12,name:'سایر (نمونه)',itemStyle:{color:'#619ee9'}}]}]});
+ addChart($('#mainChart'),{tooltip:{trigger:'axis',backgroundColor:'#1b2940',textStyle:{color:'#eef3fc',fontFamily:'Vazirmatn'}},grid:{left:45,right:18,top:18,bottom:28},xAxis:{type:'category',boundaryGap:false,data:[],...ax},yAxis:{type:'value',scale:true,...ax},series:[{name:'قیمت / شاخص',type:'line',smooth:true,symbol:'none',data:[],lineStyle:{width:2.5,color:'#9486ff'},areaStyle:{opacity:.08,color:'#9486ff'}}]});
+ const alloc=$('#allocationChart');if(alloc)alloc.innerHTML='<div class="data-empty">برای نمایش ترکیب دارایی صندوق‌ها، اتصال منبع تخصصی پرتفوی صندوق‌ها لازم است.</div>';
 }
 async function getJson(url){const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
 function renderMetrics(rows){
@@ -32,10 +32,10 @@ async function loadOverview(){
   if(!d.success||d.status!=='live')return;
   renderMetrics(d.metrics);
   const market=(d.boards||[]).find(x=>x.key==='market');
-  const idx=(market?.rows||[]).find(x=>/tedpix/i.test(x.slug||''));
-  if(idx?.slug){const h=await getJson('api/?action=history&slug='+encodeURIComponent(idx.slug)+'&range=3m');const data=h.data||{};if(h.success&&Array.isArray(data.points)&&data.points.length){const c=echarts.getInstanceByDom($('#mainChart'));if(c)c.setOption({xAxis:{data:data.labels?.length?data.labels:data.dates},series:[{name:'شاخص کل',data:data.points},{name:'میانگین متحرک',data:[]}]});$('.chart-panel .panel-head p').textContent='تاریخچه شاخص کل · داده دریافتی از Tindex';}}
-  $('.market-status').innerHTML='<span class="pulse"></span> داده متصل';
-  $('.notice small').textContent='قیمت‌های کارت‌های بازار از API تیندکس دریافت می‌شوند؛ نمودار ترکیب دارایی همچنان نمای نمونه است.';
+  const idx=(market?.rows||[]).find(x=>/tedpix|index/i.test(x.slug||''));
+  if(idx?.slug){const h=await getJson('api/?action=history&slug='+encodeURIComponent(idx.slug)+'&range=3m');const data=h.data||{};const points=data.points||idx.spark||[];if(h.success&&Array.isArray(points)&&points.length){const c=echarts.getInstanceByDom($('#mainChart'));if(c)c.setOption({xAxis:{data:data.labels?.length?data.labels:(data.dates?.length?data.dates:points.map((_,i)=>String(i+1)))},series:[{name:idx.name||'شاخص بازار',data:points}]});$('.chart-panel .panel-head p').textContent='تاریخچه '+(idx.name||'شاخص بازار')+' · داده دریافتی از Tindex';}}
+  $('.market-status').innerHTML='<span class="pulse"></span> اتصال منبع برقرار';
+  $('.notice small').textContent='قیمت‌های قابل نمایش از API تیندکس دریافت می‌شوند. اطلاعات فاقد منبع متصل، عمداً خالی می‌مانند.';
  }catch(e){/* Demo mode remains visible; never substitute fabricated live prices. */}
 }
 async function loadBoard(key){
