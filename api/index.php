@@ -119,6 +119,8 @@ if ($action === 'profile') {
             $profile['last'] = $fundData['quote']['last'] ?? null;
             $profile['close'] = $fundData['quote']['close'] ?? null;
             $profile['change_pct'] = $fundData['quote']['change_pct'] ?? null;
+            $profile['volume'] = $fundData['quote']['volume'] ?? null;
+            $profile['value_rial'] = $fundData['quote']['value_rial'] ?? null;
             respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$profile,'history'=>$history,'disclosures'=>$disclosures,'research'=>$research,'fetched_at'=>date(DATE_ATOM)]);
         }
         respond(['success'=>false,'status'=>'invalid_parameter','message'=>'نوع دارایی پشتیبانی نمی‌شود.'],400);
