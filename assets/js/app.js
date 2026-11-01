@@ -1,8 +1,9 @@
 (()=>{'use strict';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 let charts=[];
-const titles={overview:'داشبورد بازارهای مالی',funds:'مرکز تحلیل صندوق‌ها',stocks:'بورس و فرابورس',gold:'طلا و ارز',crypto:'بازار رمزارزها',screener:'دیده‌بان و فیلتر هوشمند',compare:'مقایسه دارایی‌ها',portfolio:'پرتفوی من',codal:'سامانه اطلاعیه‌های کدال'};
+const titles={overview:'داشبورد بازارهای مالی',intelligence:'اتاق هوش بازار',funds:'مرکز تحلیل صندوق‌ها',stocks:'بورس و فرابورس',gold:'طلا و ارز',crypto:'بازار رمزارزها',screener:'دیده‌بان و فیلتر هوشمند',compare:'مقایسه دارایی‌ها',portfolio:'پرتفوی من',codal:'سامانه اطلاعیه‌های کدال'};
 const pageConfig={
+ intelligence:{items:['نقشه حرارتی بازار','نبض اطلاعیه‌های کدال','واگرایی قیمت و جریان پول']},
  funds:{bridge:true,items:['بازدهی دوره‌ای','NAV و حباب','جریان ورود و خروج پول','ترکیب دارایی و تمرکز پرتفوی']},
  stocks:{board:'market',bridge:true,items:['شاخص کل و هم‌وزن','شاخص فرابورس','نمای کلی بورس و انرژی']},
  gold:{board:'gold',items:['طلای ۱۸ و ۲۴ عیار','سکه و آب‌شده','انس جهانی و نقره']},
