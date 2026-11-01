@@ -11,7 +11,7 @@ date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
 <title>فاندبورد | داشبورد بازارهای مالی</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=1.1.0">
+<link rel="stylesheet" href="assets/css/app.css?v=1.2.0">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -68,7 +68,7 @@ date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
 </div>
 <div class="toast" id="toast" role="status"></div>
 <script src="assets/js/app.js?v=1.0.0"></script>
-<script src="assets/js/module-tools.js?v=1.1.0"></script>
+<script src="assets/js/module-tools.js?v=1.2.0"></script>
 <script src="assets/js/asset-profile.js?v=1.0.0"></script>
 <script src="assets/js/market-workspaces.js?v=1.0.0"></script>
 </body></html>
