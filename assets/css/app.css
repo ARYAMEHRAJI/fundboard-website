@@ -68,3 +68,5 @@
 .intel-footnote{font-size:10px;line-height:1.9;color:var(--muted);padding:5px 2px 20px}
 @media(max-width:900px){.intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-grid{grid-template-columns:1fr}.intel-event-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.intel-treemap{height:300px}.intel-event-grid{grid-template-columns:1fr}.intel-card{padding:13px}}
+
+.intel-mover-title{font-size:11px;color:var(--muted);margin:12px 0 6px}
