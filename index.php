@@ -35,11 +35,11 @@ date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
 <main class="main">
 <header class="topbar">
   <div class="top-left"><button class="icon-btn mobile-menu" id="menuBtn" aria-label="منو">☰</button><div><div class="eyebrow">MARKET INTELLIGENCE</div><h1 id="pageTitle">داشبورد بازارهای مالی</h1></div></div>
-  <div class="top-actions"><div class="market-status"><span class="pulse"></span> نمای آزمایشی</div><button class="icon-btn" id="refreshBtn" title="به‌روزرسانی">↻</button><button class="profile-chip">A<span>کاربر</span></button></div>
+  <div class="top-actions"><div class="market-status"><span class="pulse"></span> در انتظار اتصال</div><button class="icon-btn" id="refreshBtn" title="به‌روزرسانی">↻</button><button class="profile-chip">A<span>کاربر</span></button></div>
 </header>
 <section class="page-content">
 <div class="welcome-row"><div><div class="date-line" id="todayLabel">نمای یکپارچه بازار</div><h2>تصویر روشن‌تری از <em>بازار</em> داشته باش.</h2><p>داده‌ها، روندها و فرصت‌ها را در یک نگاه دنبال کن.</p></div><div class="hero-actions"><button class="btn btn-ghost" id="exportBtn">↓ خروجی CSV</button><button class="btn btn-primary" data-view="screener">باز کردن دیده‌بان <b>←</b></button></div></div>
-<div class="notice"><span>ⓘ</span><div><b>نسخه راه‌اندازی اولیه</b><small>مقادیر فعلی داده نمونه هستند. برای نمایش قیمت زنده، اتصال منابع در تنظیمات سرور باید فعال شود.</small></div><span class="notice-tag">DEMO DATA</span></div>
+<div class="notice"><span>ⓘ</span><div><b>نسخه راه‌اندازی اولیه</b><small>داده‌های متصل از منابع اصلی دریافت می‌شوند؛ هر شاخص فاقد منبع، خالی نمایش داده می‌شود.</small></div><span class="notice-tag">DEMO DATA</span></div>
 <div class="section-heading"><div><h3>نبض بازار</h3><p>نمای کلی شاخص‌های منتخب</p></div><span class="muted">آخرین وضعیت ثبت‌شده</span></div>
 <div class="metric-grid" id="marketMetrics">
   <article class="metric-card"><div class="metric-top"><span>شاخص کل بورس</span><span class="metric-icon violet">▥</span></div><strong>—</strong><small>در انتظار اتصال منبع</small></article>
@@ -48,8 +48,8 @@ date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
   <article class="metric-card"><div class="metric-top"><span>بیت‌کوین</span><span class="metric-icon blue">₿</span></div><strong>—</strong><small>در انتظار اتصال منبع</small></article>
 </div>
 <div class="content-grid">
-  <section class="panel chart-panel"><div class="panel-head"><div><h3>روند بازار</h3><p>نمودار نمونه برای نمایش ساختار تحلیلی</p></div><div class="segmented"><button class="selected" data-period="1W">۱ هفته</button><button data-period="1M">۱ ماه</button><button data-period="3M">۳ ماه</button><button data-period="1Y">۱ سال</button></div></div><div id="mainChart" class="chart large-chart"></div><div class="chart-foot"><span>● روند شاخص (نمونه)</span><span>● میانگین متحرک (نمونه)</span></div></section>
-  <section class="panel allocation-panel"><div class="panel-head"><div><h3>ترکیب بازار</h3><p>نمایش دسته‌بندی دارایی‌ها</p></div><span class="more">•••</span></div><div id="allocationChart" class="chart donut-chart"></div><div class="legend-list"><span><i class="dot d1"></i> سهام</span><span><i class="dot d2"></i> درآمد ثابت</span><span><i class="dot d3"></i> طلا</span><span><i class="dot d4"></i> سایر</span></div></section>
+  <section class="panel chart-panel"><div class="panel-head"><div><h3>روند بازار</h3><p>تاریخچه واقعی شاخص در صورت دسترسی به منبع</p></div><div class="segmented"><button class="selected" data-period="1W">۱ هفته</button><button data-period="1M">۱ ماه</button><button data-period="3M">۳ ماه</button><button data-period="1Y">۱ سال</button></div></div><div id="mainChart" class="chart large-chart"></div><div class="chart-foot"><span>● داده تاریخی منبع متصل</span></div></section>
+  <section class="panel allocation-panel"><div class="panel-head"><div><h3>ترکیب بازار</h3><p>نمایش دسته‌بندی دارایی‌ها</p></div><span class="more">•••</span></div><div id="allocationChart" class="chart donut-chart"><div class="data-empty">برای نمایش ترکیب دارایی، منبع تخصصی پرتفوی صندوق‌ها لازم است.</div></div></section>
 </div>
 <div class="section-heading"><div><h3>بخش‌های تحلیلی</h3><p>برای ورود به جزئیات هر بازار انتخاب کن</p></div></div>
 <div class="feature-grid">
