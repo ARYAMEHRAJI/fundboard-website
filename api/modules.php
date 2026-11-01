@@ -186,20 +186,20 @@ function fb_codal(string $tool, array $p): array {
 }
 function fb_crypto(string $tool, array $p): array {
     $exchanges=[
-      ['id'=>'nobitex','name'=>'نوبیتکس','unit'=>'ریال','orderbook'=>true,'trades'=>true,'candles'=>true],
-      ['id'=>'wallex','name'=>'والکس','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
-      ['id'=>'bitpin','name'=>'بیت‌پین','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
-      ['id'=>'ramzinex','name'=>'رمزینکس','unit'=>'ریال','orderbook'=>true,'trades'=>true,'candles'=>true],
-      ['id'=>'tabdeal','name'=>'تبدیل','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
-      ['id'=>'ompfinex','name'=>'او‌ام‌پی فینکس','unit'=>'ریال','orderbook'=>true,'trades'=>false,'candles'=>true],
-      ['id'=>'exir','name'=>'اکسیر','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
-      ['id'=>'bit24','name'=>'بیت۲۴','unit'=>'تومان','orderbook'=>true,'trades'=>true,'candles'=>true],
-      ['id'=>'abantether','name'=>'آبان‌تتر','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>true],
-      ['id'=>'kifpool','name'=>'کیف پول من','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>false],
-      ['id'=>'okex','name'=>'اوکی‌اکسچنج','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>false],
-      ['id'=>'tetherland','name'=>'تترلند','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>false]
+      ['id'=>'nobitex','name'=>'نوبیتکس','unit'=>'ریال','ticker'=>true,'orderbook'=>true,'trades'=>true,'candles'=>false],
+      ['id'=>'wallex','name'=>'والکس','unit'=>'تومان','ticker'=>true,'orderbook'=>true,'trades'=>true,'candles'=>true],
+      ['id'=>'bitpin','name'=>'بیت‌پین','unit'=>'تومان','ticker'=>true,'orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'ramzinex','name'=>'رمزینکس','unit'=>'ریال','ticker'=>false,'orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'tabdeal','name'=>'تبدیل','unit'=>'تومان','ticker'=>false,'orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'ompfinex','name'=>'او‌ام‌پی فینکس','unit'=>'ریال','ticker'=>false,'orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'exir','name'=>'اکسیر','unit'=>'تومان','ticker'=>false,'orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'bit24','name'=>'بیت۲۴','unit'=>'تومان','ticker'=>false,'orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'abantether','name'=>'آبان‌تتر','unit'=>'تومان','ticker'=>false,'orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'kifpool','name'=>'کیف پول من','unit'=>'تومان','ticker'=>false,'orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'okex','name'=>'اوکی‌اکسچنج','unit'=>'تومان','ticker'=>false,'orderbook'=>false,'trades'=>false,'candles'=>false],
+      ['id'=>'tetherland','name'=>'تترلند','unit'=>'تومان','ticker'=>false,'orderbook'=>false,'trades'=>false,'candles'=>false]
     ];
-    if($tool==='exchanges') return ['exchanges'=>$exchanges,'note'=>'قیمت زنده در این نسخه برای نوبیتکس، والکس و بیت‌پین فعال شده است؛ سایر صرافی‌ها در فهرست شناسایی شده‌اند اما اتصال عملیاتی آن‌ها هنوز تکمیل نشده است.'];
+    if($tool==='exchanges') return ['exchanges'=>$exchanges,'note'=>'تیکر و فهرست بازارها برای نوبیتکس، والکس و بیت‌پین فعال است؛ دفتر سفارش و معاملات برای نوبیتکس و والکس و کندل تاریخی فعلاً فقط برای والکس متصل است. سایر صرافی‌ها صرفاً در فهرست شناخته‌شده‌اند.'];
     $coin=strtoupper(preg_replace('/[^A-Z0-9_]/','',(string)($p['coin']??'BTC')));
     if($coin==='')throw new InvalidArgumentException('نماد رمزارز را وارد کنید.');
     $quote=(string)($p['quote']??'IRT');if(!in_array($quote,['IRT','USDT'],true))throw new InvalidArgumentException('واحد قیمت نامعتبر است.');
