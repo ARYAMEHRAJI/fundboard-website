@@ -63,7 +63,7 @@ async function loadBridge(source){
 function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function navigate(v){
  if(!titles[v])return;charts.forEach(c=>c.dispose());charts=[];$('#pageTitle').textContent=titles[v];$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
- const home=v==='overview';['.welcome-row','.notice','#marketMetrics','.content-grid','.feature-grid','.lower-grid'].forEach(s=>{const e=$(s);if(e)e.hidden=!home});
+ const home=v==='overview';['.welcome-row','.notice','#marketMetrics','.section-heading','.content-grid','.feature-grid','.lower-grid'].forEach(s=>{const e=$(s);if(e)e.hidden=!home});
  const old=$('#dynamicView');if(old)old.remove();
  if(home){drawOverviewCharts();loadOverview()}else{
   const cfg=pageConfig[v]||{items:[]},e=document.createElement('section');e.id='dynamicView';e.className='view-panel';
@@ -78,7 +78,13 @@ function navigate(v){
 $$('[data-view]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.view)));
 $('#refreshBtn').addEventListener('click',async()=>{const b=$('#refreshBtn');b.textContent='…';try{await loadOverview();toast('درخواست به‌روزرسانی انجام شد.')}catch(e){toast('خطا در دریافت اطلاعات؛ تنظیمات سرور را بررسی کنید.')}finally{b.textContent='↻'}});
 $('#menuBtn').addEventListener('click',()=>$('#sidebar').classList.toggle('open'));
-$('#exportBtn').addEventListener('click',()=>toast('خروجی CSV پس از اتصال داده‌های جدول فعال می‌شود.'));
+$('#exportBtn').addEventListener('click',()=>{
+ const table=$('#dynamicView table')||$('.lower-grid table')||$('#boardRows table')||$('#bridgeRows table');
+ if(!table){toast('ابتدا جدولی با داده دریافت‌شده باز کنید.');return}
+ const csv=[...table.rows].map(row=>[...row.cells].map(cell=>'"'+cell.innerText.replace(/"/g,'""').replace(/\s+/g,' ').trim()+'"').join(',')).join('\r\n');
+ const blob=new Blob(['\\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='fundboard-export.csv';a.click();URL.revokeObjectURL(url);toast('فایل CSV آماده شد.');
+});
 $$('[data-period]').forEach(b=>b.addEventListener('click',()=>{$$('[data-period]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');toast('بازه انتخاب شد. برای دریافت تاریخچه کامل، منبع داده باید متصل باشد.')}));
 $('#todayLabel').textContent=new Intl.DateTimeFormat('fa-IR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}).format(new Date());
 drawOverviewCharts();loadOverview();window.addEventListener('resize',()=>charts.forEach(c=>c.resize()));
