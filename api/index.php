@@ -3,59 +3,98 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, max-age=0');
 header('X-Content-Type-Options: nosniff');
-$configPath = dirname(__DIR__) . '/config/config.php';
-$config = is_file($configPath) ? require $configPath : require dirname(__DIR__) . '/config/config.example.php';
+
+$root = dirname(__DIR__);
+$configPath = $root . '/config/config.php';
+$config = is_file($configPath) ? require $configPath : require $root . '/config/config.example.php';
 date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
-$action = preg_replace('/[^a-z_]/', '', (string)($_GET['action'] ?? 'overview'));
-$cacheDir = dirname(__DIR__) . '/storage/cache';
-if (!is_dir($cacheDir)) @mkdir($cacheDir, 0750, true);
-$cacheFile = $cacheDir . '/' . $action . '.json';
-$ttl = max(15, (int)($config['cache']['ttl'] ?? 90));
-if (is_file($cacheFile) && (time() - filemtime($cacheFile) < $ttl)) {
-    readfile($cacheFile); exit;
+
+function respond(array $data, int $status = 200): never {
+    http_response_code($status);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 }
-$demo = [
- 'overview' => [
-   'status'=>'demo','updated_at'=>date(DATE_ATOM),
-   'metrics'=>[
-     ['key'=>'market_index','label'=>'شاخص کل بورس','value'=>null,'unit'=>'واحد','change'=>null,'source'=>'TSETMC'],
-     ['key'=>'gold_18','label'=>'طلای ۱۸ عیار','value'=>null,'unit'=>'تومان','change'=>null,'source'=>'Tindex / TGJU'],
-     ['key'=>'usd_free','label'=>'دلار آزاد','value'=>null,'unit'=>'تومان','change'=>null,'source'=>'Tindex / TGJU'],
-     ['key'=>'bitcoin','label'=>'بیت‌کوین','value'=>null,'unit'=>'دلار','change'=>null,'source'=>'Crypto exchanges']
-   ],
-   'message'=>'اتصال زنده هنوز پیکربندی نشده است.'
- ],
- 'funds'=>['status'=>'not_configured','items'=>[]],
- 'stocks'=>['status'=>'not_configured','items'=>[]],
- 'gold'=>['status'=>'not_configured','items'=>[]],
- 'crypto'=>['status'=>'not_configured','items'=>[]],
- 'codal'=>['status'=>'not_configured','items'=>[]]
-];
-/**
- * HTTP bridge contract: configured bridge endpoints should return JSON.
- * MCP stdio packages cannot be invoked by a normal PHP web request on shared hosting.
- */
-$bridgeMap = [
- 'stocks' => $config['sources']['tsetmc_bridge_url'] ?? '',
- 'codal' => $config['sources']['codal_bridge_url'] ?? '',
- 'crypto' => $config['sources']['crypto_bridge_url'] ?? ''
-];
-if (!empty($bridgeMap[$action])) {
-    $ch = curl_init($bridgeMap[$action]);
-    curl_setopt_array($ch, [
-      CURLOPT_RETURNTRANSFER=>true, CURLOPT_CONNECTTIMEOUT=>5, CURLOPT_TIMEOUT=>12,
-      CURLOPT_HTTPHEADER=>['Accept: application/json','Authorization: Bearer '.($config['sources']['bridge_bearer_token'] ?? '')]
-    ]);
-    $body = curl_exec($ch); $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
-    if ($body !== false && $status >= 200 && $status < 300) {
-        json_decode($body, true);
-        if (json_last_error() === JSON_ERROR_NONE) { file_put_contents($cacheFile, $body, LOCK_EX); echo $body; exit; }
+function cached(string $key, int $ttl, callable $fetch, string $dir): array {
+    if (!is_dir($dir)) @mkdir($dir, 0750, true);
+    $file = $dir . '/' . hash('sha256', $key) . '.json';
+    if (is_file($file) && time() - filemtime($file) < $ttl) {
+        $data = json_decode((string)file_get_contents($file), true);
+        if (is_array($data)) return $data;
     }
+    $data = $fetch();
+    if (is_array($data)) @file_put_contents($file, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+    return $data;
 }
-if ($action === 'overview' && !empty($config['sources']['tindex_token'])) {
-    // Tindex integration point. Keep upstream credentials server-side.
-    // Endpoint schemas can change; adapter activation is deliberately explicit.
+function tindexGet(array $config, string $path): array {
+    $token = trim((string)($config['sources']['tindex_token'] ?? ''));
+    if ($token === '') return ['success'=>false,'status'=>'not_configured','message'=>'توکن Tindex در تنظیمات سرور وارد نشده است.'];
+    $base = rtrim((string)($config['sources']['tindex_base_url'] ?? 'https://tindex.app'), '/');
+    if (!str_starts_with($path, '/api/public/')) return ['success'=>false,'status'=>'invalid_path'];
+    $url = $base . $path;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 7,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $token, 'Accept: application/json'],
+        CURLOPT_USERAGENT => 'FundBoard/1.0 (+https://fundboard.ir)'
+    ]);
+    $body = curl_exec($ch);
+    $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+    if ($body === false) return ['success'=>false,'status'=>'upstream_error','message'=>'ارتباط با منبع داده برقرار نشد.','detail'=>$error];
+    $json = json_decode($body, true);
+    if (!is_array($json)) return ['success'=>false,'status'=>'invalid_response','message'=>'پاسخ منبع داده معتبر نیست.'];
+    if ($http < 200 || $http >= 300 || ($json['success'] ?? true) === false) {
+        return ['success'=>false,'status'=>'upstream_rejected','http_status'=>$http,'message'=>$json['message'] ?? 'درخواست منبع داده ناموفق بود.'];
+    }
+    return ['success'=>true,'status'=>'live','data'=>$json['data'] ?? $json,'fetched_at'=>date(DATE_ATOM)];
 }
-$out = $demo[$action] ?? ['status'=>'unknown_action','items'=>[]];
-$json = json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-echo $json;
+
+$action = preg_replace('/[^a-z_]/', '', (string)($_GET['action'] ?? 'overview'));
+$ttl = max(20, min(600, (int)($config['cache']['ttl'] ?? 90)));
+$cacheDir = $root . '/storage/cache';
+$fetch = static function(string $path) use ($config, $ttl, $cacheDir): array {
+    return cached($path, $ttl, fn() => tindexGet($config, $path), $cacheDir);
+};
+
+if ($action === 'overview') {
+    $result = $fetch('/api/public/boards');
+    if (($result['status'] ?? '') !== 'live') respond($result);
+    $boards = $result['data'];
+    $rows = [];
+    foreach ((array)$boards as $board) foreach ((array)($board['rows'] ?? []) as $row) $rows[strtolower((string)($row['slug'] ?? ''))] = $row;
+    $pick = static function(array $keys) use ($rows): ?array {
+        foreach ($keys as $key) if (isset($rows[strtolower($key)])) return $rows[strtolower($key)];
+        return null;
+    };
+    $metrics = [
+        ['key'=>'market_index','label'=>'شاخص کل بورس'] + ($pick(['TEDPIX','TEDPIX-INDEX']) ?? []),
+        ['key'=>'gold_18','label'=>'طلای ۱۸ عیار'] + ($pick(['GOLD-18K']) ?? []),
+        ['key'=>'usd_free','label'=>'دلار آزاد'] + ($pick(['USD-EXCHANGE-RATE']) ?? []),
+        ['key'=>'bitcoin','label'=>'بیت‌کوین'] + ($pick(['btc']) ?? [])
+    ];
+    respond(['success'=>true,'status'=>'live','metrics'=>$metrics,'boards'=>$boards,'fetched_at'=>$result['fetched_at']]);
+}
+if ($action === 'board') {
+    $key = (string)($_GET['key'] ?? '');
+    if (!in_array($key, ['currency','gold','crypto','market'], true)) respond(['success'=>false,'status'=>'invalid_parameter'], 400);
+    respond($fetch('/api/public/boards/' . $key));
+}
+if ($action === 'movers') respond($fetch('/api/public/indicators/movers'));
+if ($action === 'history') {
+    $slug = (string)($_GET['slug'] ?? '');
+    $range = (string)($_GET['range'] ?? '1m');
+    if (!preg_match('/^[A-Za-z0-9_-]{1,100}$/', $slug) || !in_array($range, ['1d','1w','1m','3m'], true)) respond(['success'=>false,'status'=>'invalid_parameter'], 400);
+    respond($fetch('/api/public/indicators/' . rawurlencode($slug) . '/history?range=' . $range));
+}
+if ($action === 'category') {
+    $slug = (string)($_GET['slug'] ?? '');
+    if (!preg_match('/^[A-Za-z0-9_-]{1,80}$/', $slug)) respond(['success'=>false,'status'=>'invalid_parameter'], 400);
+    respond($fetch('/api/public/indicators/by-category/' . rawurlencode($slug)));
+}
+respond(['success'=>false,'status'=>'unknown_action','allowed'=>['overview','board','movers','history','category']], 404);
