@@ -97,7 +97,7 @@ function fb_tsetmc(string $tool, array $p): array {
     if($tool==='search'){
         if($symbol==='') throw new InvalidArgumentException('نام نماد یا شرکت را وارد کنید.');
         $d=fb_http_json($base.'/Instrument/GetInstrumentSearch/'.rawurlencode($symbol));
-        return ['matches'=>array_map(fn($x)=>['symbol'=>fb_fa((string)($x['lVal18AFC']??'')),'name'=>fb_fa((string)($x['lVal30']??'')),'ins_code'=>$x['insCode']??null,'market'=>fb_fa((string)($x['flowTitle']??'')),'asset_type'=>(preg_match('/صندوق|ETF|fund/i',fb_fa((string)(($x['cSecValTitle']??'').' '.($x['flowTitle']??'').' '.($x['cgrValCotTitle']??''))))?'fund':'stock')],array_slice($d['instrumentSearch']??[],0,max(1,min(30,(int)($p['limit']??10)))))];
+        return ['matches'=>array_map(fn($x)=>['symbol'=>fb_fa((string)($x['lVal18AFC']??'')),'name'=>fb_fa((string)($x['lVal30']??'')),'ins_code'=>$x['insCode']??null,'market'=>fb_fa((string)($x['flowTitle']??'')),'asset_type'=>(str_starts_with(strtoupper((string)($x['cIsin']??'')),'IRT1')||preg_match('/صندوق|ETF|fund/i',fb_fa((string)(($x['flowTitle']??'').' '.($x['cgrValCotTitle']??''))))?'fund':'stock')],array_slice($d['instrumentSearch']??[],0,max(1,min(30,(int)($p['limit']??10)))))];
     }
     if($tool==='fund_profile'){
         [$ins,$ticker]=$resolve();
