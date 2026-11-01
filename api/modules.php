@@ -309,10 +309,10 @@ function fb_crypto(string $tool, array $p): array {
     }
     if($tool==='best_execution'){
         $book=fb_crypto('orderbook',['exchange'=>$exchange,'coin'=>$coin,'quote'=>$quote]);
-        $side=(string)($p['side']??'buy');$amount=max(0,(float)($p['amount']??0));if($amount<=0)throw new InvalidArgumentException('مبلغ سفارش باید بیشتر از صفر باشد.');
+        $side=(string)($p['side']??'buy');$amount=max(0,(float)($p['amount']??0));if($amount<=0)throw new InvalidArgumentException('مقدار سفارش باید بیشتر از صفر باشد.');
         $levels=$side==='sell'?($book['bids']??[]):($book['asks']??[]);$remaining=$amount;$filled=0;$total=0;$fills=[];
-        foreach($levels as $level){$price=(float)($level['price']??0);$qty=(float)($level['quantity']??0);if($price<=0||$qty<=0)continue;$take=min($qty,$remaining/$price);if($take<=0)break;$value=$take*$price;$filled+=$take;$total+=$value;$remaining-=$value;$fills[]=['price'=>$price,'quantity'=>$take,'value'=>$value];if($remaining<=0)break;}
-        return ['exchange'=>$exchange,'side'=>$side,'requested_quote_amount'=>$amount,'filled_base_quantity'=>$filled,'filled_quote_amount'=>$total,'average_price'=>$filled?$total/$filled:null,'unfilled_quote_amount'=>max(0,$remaining),'fills'=>$fills,'note'=>'برآورد بر اساس عمق سفارش فعلی است؛ اجرای واقعی سفارش یا کارمزد را تضمین نمی‌کند.'];
+        foreach($levels as $level){$price=(float)($level['price']??0);$qty=(float)($level['quantity']??0);if($price<=0||$qty<=0)continue;$take=$side==='sell'?min($qty,$remaining):min($qty,$remaining/$price);if($take<=0)break;$value=$take*$price;$filled+=$take;$total+=$value;$remaining-=$side==='sell'?$take:$value;$fills[]=['price'=>$price,'quantity'=>$take,'value'=>$value];if($remaining<=0)break;}
+        return ['exchange'=>$exchange,'side'=>$side,'requested_base_quantity'=>$side==='sell'?$amount:null,'requested_quote_amount'=>$side==='buy'?$amount:null,'filled_base_quantity'=>$filled,'filled_quote_amount'=>$total,'average_price'=>$filled?$total/$filled:null,'unfilled_base_quantity'=>$side==='sell'?max(0,$remaining):null,'unfilled_quote_amount'=>$side==='buy'?max(0,$remaining):null,'fills'=>$fills,'note'=>'برآورد بر اساس عمق سفارش فعلی است؛ اجرای واقعی سفارش یا کارمزد را تضمین نمی‌کند.'];
     }
     if($tool==='arbitrage'){
         return fb_crypto('compare',['coin'=>$coin,'quote'=>$quote]);
