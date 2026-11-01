@@ -55,7 +55,7 @@ function fb_http_text(string $url, int $timeout=20): string {
     $host=strtolower((string)parse_url($url,PHP_URL_HOST));
     if($host!=='www.codal.ir')throw new RuntimeException('Codal page host is not allowed.');
     $ch=curl_init($url);
-    curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>7,CURLOPT_TIMEOUT=>$timeout,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_HTTPHEADER=>['Accept: text/html,application/xhtml+xml','Accept-Language: fa-IR,fa;q=0.9'],'CURLOPT_USERAGENT'=>'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36']);
+    curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>7,CURLOPT_TIMEOUT=>$timeout,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_HTTPHEADER=>['Accept: text/html,application/xhtml+xml','Accept-Language: fa-IR,fa;q=0.9'],CURLOPT_USERAGENT=>'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36']);
     $body=curl_exec($ch);$status=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);$err=curl_error($ch);curl_close($ch);
     if(!is_string($body)||$status<200||$status>=300)throw new RuntimeException('دریافت صفحه کدال ناموفق بود: HTTP '.$status.' '.$err);
     return $body;
