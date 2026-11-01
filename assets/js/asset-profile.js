@@ -2,7 +2,7 @@
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let timer=null,profile=null,research=null,codalCompany=null,regNo='',disclosures=[],chart=null,volumeChart=null,rsiChart=null,researchFlowChart=null,kind='stock',assetId='',range='1m',mode='candle';
 function fmt(v){return v==null||v===''?'—':Number(v).toLocaleString('fa-IR',{maximumFractionDigits:2})}
-function faDate(v){const z=String(v??'');if(/^\d{8}$/.test(z)){const d=new Date(Date.UTC(+z.slice(0,4),+z.slice(4,6)-1,+z.slice(6,8)));return d.toLocaleDateString('fa-IR-u-ca-persian')}return z}
+function faDate(v){const z=String(v??'');if(/^\d{8}$/.test(z))return [z.slice(0,4),z.slice(4,6),z.slice(6,8)].map(x=>Number(x).toLocaleString('fa-IR')).join('/');return z}
 function calcInsights(rows){
  const values=(rows||[]).map(x=>Number(x.close??x.pClosing??x.value??x)).filter(x=>Number.isFinite(x)&&x>0);
  if(values.length<2)return null;
