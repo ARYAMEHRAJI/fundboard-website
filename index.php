@@ -70,4 +70,5 @@ date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
 <script src="assets/js/app.js?v=1.0.0"></script>
 <script src="assets/js/module-tools.js?v=1.1.0"></script>
 <script src="assets/js/asset-profile.js?v=1.0.0"></script>
+<script src="assets/js/market-workspaces.js?v=1.0.0"></script>
 </body></html>
