@@ -102,7 +102,8 @@ if ($action === 'bridge') {
     $source = (string)($_GET['source'] ?? '');
     $allowed = ['funds','stocks','codal','crypto'];
     if (!in_array($source, $allowed, true)) respond(['success'=>false,'status'=>'invalid_source'], 400);
-    $url = trim((string)($config['sources'][$source . '_bridge_url'] ?? ''));
+    $bridgeKeys = ['funds'=>'funds_bridge_url','stocks'=>'tsetmc_bridge_url','codal'=>'codal_bridge_url','crypto'=>'crypto_bridge_url'];
+    $url = trim((string)($config['sources'][$bridgeKeys[$source]] ?? ''));
     if ($url === '') respond(['success'=>false,'status'=>'not_configured','message'=>'سرویس واسط این بخش تنظیم نشده است.']);
     if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['https'], true)) respond(['success'=>false,'status'=>'invalid_bridge_url'], 500);
     $result = cached('bridge:' . $source, $ttl, static function() use ($url, $config): array {
