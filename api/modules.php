@@ -80,16 +80,32 @@ function fb_tsetmc(string $tool, array $p): array {
     if($tool==='fund_list'){
         $types=[4=>'درآمد ثابت',5=>'کالایی',6=>'سهامی',7=>'مختلط',11=>'بازارگردانی',12=>'سرمایه‌گذاری خطرپذیر',13=>'پروژه‌ای',14=>'املاک و مستغلات',16=>'خصوصی',17=>'سایر'];
         $out=[];$errors=[];
-        foreach($types as $type=>$label){
-            try{
-                $d=fb_http_json($base.'/Fund/GetFunds/'.$type,[],18);
-                foreach(($d['funds']??[]) as $x){
-                    $name=(string)($x['name']??$x['fundName']??$x['lVal30']??$x['title']??$x['nameFa']??'');
-                    $symbol=(string)($x['symbol']??$x['lVal18AFC']??$x['ticker']??'');
-                    $ins=(string)($x['insCode']??$x['inscode']??$x['instrumentCode']??'');
-                    $out[]=['name'=>fb_fa($name),'symbol'=>fb_fa($symbol),'ins_code'=>$ins,'reg_no'=>$x['regNo']??$x['regno']??$x['registrationNo']??null,'type'=>$type,'type_title'=>$label,'nav'=>$x['nav']??$x['NAV']??null,'aum'=>$x['aUM']??$x['aum']??$x['AUM']??null];
-                }
-            }catch(Throwable $e){$errors[$type]=$e->getMessage();}
+        $all=null;
+        try{$all=fb_http_json($base.'/Fund/GetFunds/0',[],12)['funds']??null;}catch(Throwable $e){$errors['all']=$e->getMessage();}
+        if(is_array($all)&&count($all)){
+            foreach($all as $x){
+                $type=(int)($x['type']??$x['fundType']??$x['fundTypeId']??0);
+                $label=$types[$type]??(string)($x['typeTitle']??$x['fundTypeTitle']??'صندوق');
+                $name=(string)($x['name']??$x['fundName']??$x['lVal30']??$x['title']??$x['nameFa']??'');
+                $symbol=(string)($x['symbol']??$x['lVal18AFC']??$x['ticker']??'');
+                $ins=(string)($x['insCode']??$x['inscode']??$x['instrumentCode']??'');
+                if($name===''&&$symbol==='')continue;
+                $out[]=['name'=>fb_fa($name),'symbol'=>fb_fa($symbol),'ins_code'=>$ins,'reg_no'=>$x['regNo']??$x['regno']??$x['registrationNo']??null,'type'=>$type,'type_title'=>$label,'nav'=>$x['nav']??$x['NAV']??null,'aum'=>$x['aUM']??$x['aum']??$x['AUM']??null];
+            }
+        }else{
+            $fallbackTypes=[4,5,6,7,14];
+            foreach($fallbackTypes as $type){
+                try{
+                    $d=fb_http_json($base.'/Fund/GetFunds/'.$type,[],10);
+                    foreach(($d['funds']??[]) as $x){
+                        $name=(string)($x['name']??$x['fundName']??$x['lVal30']??$x['title']??$x['nameFa']??'');
+                        $symbol=(string)($x['symbol']??$x['lVal18AFC']??$x['ticker']??'');
+                        $ins=(string)($x['insCode']??$x['inscode']??$x['instrumentCode']??'');
+                        if($name===''&&$symbol==='')continue;
+                        $out[]=['name'=>fb_fa($name),'symbol'=>fb_fa($symbol),'ins_code'=>$ins,'reg_no'=>$x['regNo']??$x['regno']??$x['registrationNo']??null,'type'=>$type,'type_title'=>$types[$type],'nav'=>$x['nav']??$x['NAV']??null,'aum'=>$x['aUM']??$x['aum']??$x['AUM']??null];
+                    }
+                }catch(Throwable $e){$errors[$type]=$e->getMessage();}
+            }
         }
         $unique=[];foreach($out as $x){$key=$x['ins_code']?:($x['symbol'].'|'.$x['name']);if($key!=='')$unique[$key]=$x;}
         return ['funds'=>array_values($unique),'count'=>count($unique),'types'=>$types,'partial_errors'=>$errors,'source'=>'TSETMC Fund API'];
