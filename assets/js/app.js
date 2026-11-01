@@ -3,14 +3,14 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 let charts=[];
 const titles={overview:'داشبورد بازارهای مالی',funds:'مرکز تحلیل صندوق‌ها',stocks:'بورس و فرابورس',gold:'طلا و ارز',crypto:'بازار رمزارزها',screener:'دیده‌بان و فیلتر هوشمند',compare:'مقایسه دارایی‌ها',portfolio:'پرتفوی من',codal:'سامانه اطلاعیه‌های کدال'};
 const pageConfig={
- funds:{items:['بازدهی دوره‌ای','NAV و حباب','جریان ورود و خروج پول','ترکیب دارایی و تمرکز پرتفوی']},
- stocks:{board:'market',items:['شاخص کل و هم‌وزن','شاخص فرابورس','نمای کلی بورس و انرژی']},
+ funds:{bridge:true,items:['بازدهی دوره‌ای','NAV و حباب','جریان ورود و خروج پول','ترکیب دارایی و تمرکز پرتفوی']},
+ stocks:{board:'market',bridge:true,items:['شاخص کل و هم‌وزن','شاخص فرابورس','نمای کلی بورس و انرژی']},
  gold:{board:'gold',items:['طلای ۱۸ و ۲۴ عیار','سکه و آب‌شده','انس جهانی و نقره']},
- crypto:{board:'crypto',items:['قیمت رمزارزها','مقایسه و اختلاف قیمت','تغییرات بازار']},
+ crypto:{board:'crypto',bridge:true,items:['قیمت رمزارزها','مقایسه و اختلاف قیمت','تغییرات بازار']},
  screener:{items:['فیلتر بازدهی و ریسک','فیلتر نقدشوندگی و اندازه صندوق','مرتب‌سازی و ذخیره فیلتر']},
  compare:{items:['مقایسه بازدهی در بازه‌های مختلف','مقایسه نوسان و افت سرمایه','مقایسه ریسک به بازده']},
  portfolio:{items:['ثبت دارایی و تعداد واحد','بهای تمام‌شده و سود و زیان','سهم هر دارایی از کل پرتفوی']},
- codal:{items:['جست‌وجوی ناشر و نماد','فیلتر نوع اطلاعیه','گزارش‌های ماهانه و صورت‌های مالی']}
+ codal:{bridge:true,items:['جست‌وجوی ناشر و نماد','فیلتر نوع اطلاعیه','گزارش‌های ماهانه و صورت‌های مالی']}
 };
 const toast=m=>{const e=$('#toast');e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2800)};
 const fmt=n=>n===null||n===undefined||n===''?'—':Number(n).toLocaleString('fa-IR',{maximumFractionDigits:4});
@@ -48,6 +48,18 @@ async function loadBoard(key){
  const first=rows.find(r=>Array.isArray(r.spark)&&r.spark.length);
  if(first){const chartEl=$('#viewChart');if(chartEl){const c=addChart(chartEl,{tooltip:{trigger:'axis'},grid:{left:40,right:15,top:20,bottom:30},xAxis:{type:'category',data:first.spark.map((_,i)=>String(i+1)),axisLabel:{color:'#8292aa'}},yAxis:{type:'value',axisLabel:{color:'#8292aa'},splitLine:{lineStyle:{color:'#243249'}}},series:[{name:first.name,type:'line',data:first.spark,symbol:'none',smooth:true,lineStyle:{color:'#8b7cff',width:3},areaStyle:{opacity:.08,color:'#8b7cff'}}]});}}
 }
+async function loadBridge(source){
+ const host=$('#bridgeRows');if(!host)return;
+ try{
+  const result=await getJson('api/?action=bridge&source='+encodeURIComponent(source));
+  if(!result.success||result.status!=='live')throw new Error(result.message||'not configured');
+  const raw=result.data||{},items=Array.isArray(raw)?raw:(raw.items||raw.rows||raw.results||[]);
+  if(!items.length){host.innerHTML='<div class="data-empty">اتصال برقرار شد؛ اما هنوز رکوردی از منبع دریافت نشده است.</div>';return}
+  const title=titles[source]||'بازار';
+  host.innerHTML='<div class="panel" style="margin-top:14px"><div class="panel-head"><div><h3>داده‌های تکمیلی '+title+'</h3><p>دریافت‌شده از سرویس واسط</p></div><span class="status-pill">LIVE BRIDGE</span></div><div style="overflow:auto"><table class="data-table"><thead><tr><th>عنوان</th><th>نماد</th><th>مقدار</th><th>تغییر</th><th>آخرین به‌روزرسانی</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+safe(x.name||x.title||'—')+'</td><td>'+safe(x.symbol||x.ticker||'—')+'</td><td>'+fmt(x.value??x.price??x.nav)+'</td><td>'+fmt(x.change??x.return??'—')+'</td><td>'+safe(x.updated_at||'—')+'</td></tr>').join('')+'</tbody></table></div></div>';
+  const empty=host.parentElement.querySelector('.data-empty');if(empty)empty.remove();
+ }catch(e){host.innerHTML='<div class="data-empty">سرویس واسط این بخش هنوز تنظیم نشده یا پاسخ معتبری نداد.</div>'}
+}
 function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function navigate(v){
  if(!titles[v])return;$('#pageTitle').textContent=titles[v];$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
@@ -55,10 +67,11 @@ function navigate(v){
  const old=$('#dynamicView');if(old)old.remove();
  if(home){drawOverviewCharts();loadOverview()}else{
   const cfg=pageConfig[v]||{items:[]},e=document.createElement('section');e.id='dynamicView';e.className='view-panel';
-  e.innerHTML='<div class="view-intro"><h2>'+titles[v]+'</h2><p>پنل تخصصی فاندبورد؛ داده زنده پس از تنظیم منبع مربوطه فعال می‌شود.</p></div><div class="mini-stat-grid">'+cfg.items.slice(0,3).map(x=>'<div class="mini-stat"><small>'+x+'</small><b>—</b></div>').join('')+'</div><div class="panel"><div class="panel-head"><div><h3>نمای تحلیلی</h3><p>روند و داده‌های بازار</p></div><span class="status-pill">اتصال منبع</span></div><div id="viewChart" class="chart chart-tall"></div>'+(cfg.board?'<div id="boardRows"><div class="data-empty">در حال دریافت داده…</div></div>':'<div class="data-empty"><b>منبع داده این بخش هنوز متصل نشده است</b><p>برای جلوگیری از نمایش اطلاعات ساختگی، اطلاعات واقعی تا زمان فعال‌سازی منبع نمایش داده نمی‌شود.</p><span class="status-pill">SOURCE NOT CONFIGURED</span></div>')+'</div>';
+  e.innerHTML='<div class="view-intro"><h2>'+titles[v]+'</h2><p>پنل تخصصی فاندبورد؛ داده زنده پس از تنظیم منبع مربوطه فعال می‌شود.</p></div><div class="mini-stat-grid">'+cfg.items.slice(0,3).map(x=>'<div class="mini-stat"><small>'+x+'</small><b>—</b></div>').join('')+'</div><div class="panel"><div class="panel-head"><div><h3>نمای تحلیلی</h3><p>روند و داده‌های بازار</p></div><span class="status-pill">اتصال منبع</span></div><div id="viewChart" class="chart chart-tall"></div>'+(cfg.board?'<div id="boardRows"><div class="data-empty">در حال دریافت داده…</div></div>':'')+(cfg.bridge?'<div id="bridgeRows"><div class="data-empty">در حال بررسی سرویس واسط…</div></div>':'<div class="data-empty"><b>منبع داده این بخش هنوز متصل نشده است</b><p>برای جلوگیری از نمایش اطلاعات ساختگی، اطلاعات واقعی تا زمان فعال‌سازی منبع نمایش داده نمی‌شود.</p><span class="status-pill">SOURCE NOT CONFIGURED</span></div>')+'</div>';
   $('.page-content').insertBefore(e,$('footer'));
   if(cfg.board){loadBoard(cfg.board).catch(()=>{$('#boardRows').innerHTML='<div class="data-empty">اتصال این منبع در دسترس نیست؛ توکن Tindex و دسترسی سرور را بررسی کنید.</div>'})}
-  else addChart($('#viewChart'),{grid:{left:35,right:15,top:20,bottom:30},xAxis:{type:'category',data:[],axisLabel:{color:'#8292aa'}},yAxis:{type:'value',axisLabel:{color:'#8292aa'},splitLine:{lineStyle:{color:'#243249'}}},series:[{type:'line',data:[],symbol:'none',lineStyle:{color:'#8b7cff',width:3}}]});
+  if(cfg.bridge)loadBridge(v);
+  if(!cfg.board)addChart($('#viewChart'),{grid:{left:35,right:15,top:20,bottom:30},xAxis:{type:'category',data:[],axisLabel:{color:'#8292aa'}},yAxis:{type:'value',axisLabel:{color:'#8292aa'},splitLine:{lineStyle:{color:'#243249'}}},series:[{type:'line',data:[],symbol:'none',lineStyle:{color:'#8b7cff',width:3}}]});
  }
  $('#sidebar').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});
 }
