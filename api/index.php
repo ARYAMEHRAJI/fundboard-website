@@ -113,9 +113,12 @@ if ($action === 'profile') {
             $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>180,'1y'=>365,'all'=>500][$range];
             $hist = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>$days]);
             $history = $hist['rows']??[];
-            $research = fb_build_research('fund',$id,$history,(string)($fundData['symbol']??$id));
+            $research = fb_build_research('fund',$id,$history,(string)($fundData['symbol']??$fundData['instrument_info']['lVal18AFC']??$id));
             $disclosures = array_slice($research['events']??[],0,8);
-            $profile = array_merge($fundData, (array)($fundData['quote']??[]));
+            $profile = $fundData;
+            $profile['last'] = $fundData['quote']['last'] ?? null;
+            $profile['close'] = $fundData['quote']['close'] ?? null;
+            $profile['change_pct'] = $fundData['quote']['change_pct'] ?? null;
             respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$profile,'history'=>$history,'disclosures'=>$disclosures,'research'=>$research,'fetched_at'=>date(DATE_ATOM)]);
         }
         respond(['success'=>false,'status'=>'invalid_parameter','message'=>'نوع دارایی پشتیبانی نمی‌شود.'],400);
