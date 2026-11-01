@@ -68,4 +68,5 @@ date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
 </div>
 <div class="toast" id="toast" role="status"></div>
 <script src="assets/js/app.js?v=1.0.0"></script>
+<script src="assets/js/module-tools.js?v=1.1.0"></script>
 </body></html>
