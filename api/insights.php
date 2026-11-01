@@ -37,13 +37,13 @@ function fb_build_research(string $kind,string $id,array $history,string $codalS
     foreach($disclosures as $x){
         $title=(string)($x['title']??'');$low=mb_strtolower($title);
         $type='سایر اطلاعیه‌ها';
-        foreach(['صورت مالی'=>'صورت مالی','گزارش فعالیت ماهانه'=>'عملکرد ماهانه','فعالیت ماهانه'=>'عملکرد ماهانه','افشای اطلاعات بااهمیت'=>'افشای بااهمیت','افزایش سرمایه'=>'افزایش سرمایه','تقسیم سود'=>'تقسیم سود','مجمع'=>'مجمع','تجدید ارزیابی'=>'تجدید ارزیابی','قرارداد'=>'قرارداد','توقف'=>'توقف نماد','پیشنهاد هیئت مدیره'=>'پیشنهاد هیئت‌مدیره'] as $needle=>$label){if(mb_stripos($title,$needle)!==false){$type=$label;break;}}
+        foreach(['صورت‌های مالی'=>'صورت مالی','صورت های مالی'=>'صورت مالی','صورت مالی'=>'صورت مالی','گزارش فعالیت ماهانه'=>'عملکرد ماهانه','فعالیت ماهانه'=>'عملکرد ماهانه','افشای اطلاعات بااهمیت'=>'افشای بااهمیت','افزایش سرمایه'=>'افزایش سرمایه','تقسیم سود'=>'تقسیم سود','مجمع'=>'مجمع','تجدید ارزیابی'=>'تجدید ارزیابی','قرارداد'=>'قرارداد','توقف'=>'توقف نماد','پیشنهاد هیئت مدیره'=>'پیشنهاد هیئت‌مدیره'] as $needle=>$label){if(mb_stripos($title,$needle)!==false){$type=$label;break;}}
         $events[]=['type'=>$type,'title'=>$title,'sent'=>$x['sent']??null,'url'=>$x['url']??null,'tracing_no'=>$x['tracing_no']??null,'company'=>$x['company']??null,'symbol'=>$x['symbol']??null];
     }
     $flags=[];
     $ret20=$atReturn(20);
     if($last!==null&&$ma20!==null)$flags[]=['key'=>'trend','label'=>$last>=$ma20?'قیمت بالاتر از میانگین ۲۰ روزه':'قیمت پایین‌تر از میانگین ۲۰ روزه','tone'=>$last>=$ma20?'positive':'negative'];
-    if($rsi!==null)$flags[]=['key'=>'rsi','label'=>$rsi>=70?'RSI در محدوده بالای ۷۰':($rsi<=30?'RSI در محدوده زیر ۳۰':'RSI در محدوده میانی'),'tone'=>$rsi>=70?'warning':($rsi<=30?'positive':'neutral')];
+    if($rsi!==null)$flags[]=['key'=>'rsi','label'=>$rsi>=70?'RSI در محدوده بالای ۷۰':($rsi<=30?'RSI در محدوده زیر ۳۰':'RSI در محدوده میانی'),'tone'=>($rsi>=70||$rsi<=30)?'warning':'neutral'];
     if($flow20['net_value']>0)$flags[]=['key'=>'flow','label'=>'خالص ارزش خرید حقیقی در ۲۰ جلسه مثبت بوده است','tone'=>'positive'];
     elseif($flow20['net_value']<0)$flags[]=['key'=>'flow','label'=>'خالص ارزش خرید حقیقی در ۲۰ جلسه منفی بوده است','tone'=>'negative'];
     if($ret20!==null&&$ret20>0&&$flow20['net_value']<0)$flags[]=['key'=>'divergence','label'=>'واگرایی: رشد قیمت همراه با خروج خالص پول حقیقی در ۲۰ جلسه','tone'=>'warning'];
