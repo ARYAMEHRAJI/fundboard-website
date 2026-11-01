@@ -4,7 +4,7 @@ const toolSets={
  stocks:[
   ['search','جست‌وجوی نماد','نماد یا نام شرکت','query'],
   ['quote','تابلوی نماد','نماد','symbol'],
-  ['movers','برترین‌های بازار','نوع مرتب‌سازی','sort_by'],
+  ['movers','برترین‌های بازار','نوع مرتب‌سازی',''],
   ['orderbook','عمق سفارش‌ها','نماد','symbol'],
   ['history','تاریخچه قیمت','نماد','symbol'],
   ['flow','معاملات حقیقی و حقوقی','نماد','symbol'],
@@ -26,7 +26,7 @@ const toolSets={
   ['trades','معاملات اخیر','نماد ارز','coin'],
   ['candles','نمودار کندل','نماد ارز','coin'],
   ['movers','بیشترین رشد و افت','نماد ارز (اختیاری)','coin'],
-  ['markets','فهرست بازارهای یک صرافی','شناسه صرافی','exchange'],
+  ['markets','فهرست بازارهای یک صرافی','شناسه صرافی',''],
   ['best_execution','برآورد اجرای سفارش','نماد ارز','coin'],
   ['arbitrage','اختلاف قیمت صرافی‌ها','نماد ارز','coin'],
   ['fees','کارمزد و شبکه برداشت','شناسه صرافی','exchange'],
@@ -64,6 +64,13 @@ function selectTool(module,id){
  const form=$('#toolForm'); if(!supported){form.innerHTML='<div class="data-empty">این ابزار هنوز پیاده‌سازی نشده است. سایر ابزارهای فعال همین بخش قابل استفاده‌اند.</div>';return;}
  const defaults=paramsFor[id]||{};
  const fields=[];
+ if(module==='codal' && id==='search_letters'){
+  fields.push('<label>عنوان اطلاعیه (اختیاری)<input name="title" placeholder="مثلاً گزارش فعالیت ماهانه"></label>');
+  fields.push('<label>از تاریخ شمسی<input name="from_date" placeholder="1405/01/01"></label>');
+  fields.push('<label>تا تاریخ شمسی<input name="to_date" placeholder="1405/12/29"></label>');
+  fields.push('<label>دوره گزارش (ماه)<input name="period_months" type="number" min="1" max="12" placeholder="مثلاً 3"></label>');
+  fields.push('<label>شماره پیگیری (اختیاری)<input name="tracing_no" type="number"></label>');
+ }
  if(item[3])fields.push('<label>'+esc(item[2])+'<input name="'+esc(item[3])+'" placeholder="'+esc(item[2])+'" '+(id==='categories'?'disabled':'')+'></label>');
  for(const [k,v] of Object.entries(defaults)){
   if(k===item[3])continue;
