@@ -7,7 +7,7 @@ declare(strict_types=1);
  */
 function fb_http_json(string $url, array $query = [], int $timeout = 14, array $headers = []): array {
     $host = strtolower((string)parse_url($url, PHP_URL_HOST));
-    $allowed = ['cdn.tsetmc.com','search.codal.ir','www.codal.ir'];
+    $allowed = ['cdn.tsetmc.com','search.codal.ir','www.codal.ir','apiv2.nobitex.ir','api.wallex.ir','api.bitpin.ir'];
     if (!in_array($host, $allowed, true)) {
         throw new RuntimeException('Upstream host is not allow-listed.');
     }
@@ -197,8 +197,48 @@ function fb_crypto(string $tool, array $p): array {
       ['id'=>'okex','name'=>'اوکی‌اکسچنج','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>false],
       ['id'=>'tetherland','name'=>'تترلند','unit'=>'تومان','orderbook'=>false,'trades'=>false,'candles'=>false]
     ];
-    if($tool==='exchanges') return ['exchanges'=>$exchanges,'note'=>'این فهرست قابلیت‌های اعلام‌شده در مخزن مرجع را نشان می‌دهد؛ اتصال قیمت زنده هر صرافی هنوز باید پیاده‌سازی و روی هاست آزمایش شود.'];
-    throw new RuntimeException('اتصال زنده این عملیات رمزارز هنوز در این نسخه فعال نشده است؛ فهرست ۱۲ صرافی و قابلیت‌های هرکدام در دسترس است.');
+    if($tool==='exchanges') return ['exchanges'=>$exchanges,'note'=>'قیمت زنده در این نسخه برای نوبیتکس، والکس و بیت‌پین فعال شده است؛ سایر صرافی‌ها در فهرست شناسایی شده‌اند اما اتصال عملیاتی آن‌ها هنوز تکمیل نشده است.'];
+    $coin=strtoupper(preg_replace('/[^A-Z0-9_]/','',(string)($p['coin']??'BTC')));
+    if($coin==='')throw new InvalidArgumentException('نماد رمزارز را وارد کنید.');
+    $quote=(string)($p['quote']??'IRT');if(!in_array($quote,['IRT','USDT'],true))throw new InvalidArgumentException('واحد قیمت نامعتبر است.');
+    $getTicker=function(string $exchange)use($coin,$quote):array{
+        if($exchange==='nobitex'){
+            $stats=fb_http_json('https://apiv2.nobitex.ir/market/stats')['stats']??[];$suffix=$quote==='IRT'?'rls':'usdt';$v=$stats[strtolower($coin).'-'.$suffix]??null;
+            if(!$v)throw new RuntimeException('بازار در نوبیتکس یافت نشد.');
+            return ['exchange'=>'nobitex','name'=>'نوبیتکس','price'=>isset($v['latest'])?(float)$v['latest']/10:null,'bid'=>isset($v['bestBuy'])?(float)$v['bestBuy']/10:null,'ask'=>isset($v['bestSell'])?(float)$v['bestSell']/10:null,'high'=>isset($v['dayHigh'])?(float)$v['dayHigh']/10:null,'low'=>isset($v['dayLow'])?(float)$v['dayLow']/10:null,'change_pct'=>isset($v['dayChange'])?(float)$v['dayChange']:null,'unit'=>$quote==='IRT'?'toman':'usdt'];
+        }
+        if($exchange==='wallex'){
+            $symbols=fb_http_json('https://api.wallex.ir/v1/markets')['result']['symbols']??[];
+            foreach($symbols as $m){if(strtoupper((string)($m['baseAsset']??''))===$coin && strtoupper((string)($m['quoteAsset']??''))===($quote==='IRT'?'TMN':'USDT')){$s=$m['stats']??[];return ['exchange'=>'wallex','name'=>'والکس','price'=>isset($s['lastPrice'])?(float)$s['lastPrice']:null,'bid'=>isset($s['bidPrice'])?(float)$s['bidPrice']:null,'ask'=>isset($s['askPrice'])?(float)$s['askPrice']:null,'high'=>isset($s['24h_highPrice'])?(float)$s['24h_highPrice']:null,'low'=>isset($s['24h_lowPrice'])?(float)$s['24h_lowPrice']:null,'change_pct'=>isset($s['24h_ch'])?(float)$s['24h_ch']:null,'unit'=>$quote==='IRT'?'toman':'usdt'];}}
+            throw new RuntimeException('بازار در والکس یافت نشد.');
+        }
+        if($exchange==='bitpin'){
+            $rows=fb_http_json('https://api.bitpin.ir/api/v1/mkt/tickers/');
+            foreach($rows as $t){$parts=explode('_',(string)($t['symbol']??''));if(strtoupper($parts[0]??'')===$coin && strtoupper($parts[1]??'')===$quote){return ['exchange'=>'bitpin','name'=>'بیت‌پین','price'=>isset($t['price'])?(float)$t['price']:null,'bid'=>null,'ask'=>null,'high'=>isset($t['high'])?(float)$t['high']:null,'low'=>isset($t['low'])?(float)$t['low']:null,'change_pct'=>isset($t['daily_change_price'])?(float)$t['daily_change_price']:null,'unit'=>$quote==='IRT'?'toman':'usdt'];}}
+            throw new RuntimeException('بازار در بیت‌پین یافت نشد.');
+        }
+        throw new RuntimeException('اتصال این صرافی هنوز تکمیل نشده است.');
+    };
+    if($tool==='ticker'){
+        $exchange=(string)($p['exchange']??'wallex');
+        return $getTicker($exchange);
+    }
+    if($tool==='compare'){
+        $rows=[];$errors=[];
+        foreach(['nobitex','wallex','bitpin'] as $exchange){try{$rows[]=$getTicker($exchange);}catch(Throwable $e){$errors[$exchange]=$e->getMessage();}}
+        $rows=array_values(array_filter($rows,fn($x)=>$x['price']!==null));usort($rows,fn($a,$b)=>$a['price']<=>$b['price']);
+        $out=['coin'=>$coin,'quote'=>$quote,'unit'=>$quote==='IRT'?'toman':'usdt','prices'=>$rows,'errors'=>$errors];
+        if(count($rows)>1){$out['cheapest']=$rows[0]['exchange'];$out['priciest']=$rows[count($rows)-1]['exchange'];$out['spread_pct']=round(($rows[count($rows)-1]['price']/$rows[0]['price']-1)*100,3);}
+        return $out;
+    }
+    if($tool==='markets'){
+        $exchange=(string)($p['exchange']??'wallex');
+        if($exchange==='wallex'){$symbols=fb_http_json('https://api.wallex.ir/v1/markets')['result']['symbols']??[];$coins=[];foreach($symbols as $m)if(($m['quoteAsset']??'')===($quote==='IRT'?'TMN':'USDT'))$coins[]=$m['baseAsset'];return ['exchange'=>'wallex','quote'=>$quote,'coins'=>array_values(array_unique($coins))];}
+        if($exchange==='nobitex'){$stats=fb_http_json('https://apiv2.nobitex.ir/market/stats')['stats']??[];$coins=[];foreach(array_keys($stats) as $key){[$base,$q]=array_pad(explode('-',$key,2),2,'');if($q===($quote==='IRT'?'rls':'usdt'))$coins[]=strtoupper($base);}return ['exchange'=>'nobitex','quote'=>$quote,'coins'=>$coins];}
+        if($exchange==='bitpin'){$rows=fb_http_json('https://api.bitpin.ir/api/v1/mkt/tickers/');$coins=[];foreach($rows as $t){$parts=explode('_',(string)($t['symbol']??''));if(strtoupper($parts[1]??'')===$quote)$coins[]=strtoupper($parts[0]);}return ['exchange'=>'bitpin','quote'=>$quote,'coins'=>array_values(array_unique($coins))];}
+        throw new RuntimeException('فهرست بازار این صرافی هنوز متصل نشده است.');
+    }
+    throw new RuntimeException('ابزار انتخابی رمزارز هنوز به API عمومی صرافی‌ها متصل نشده است.');
 }
 function fb_dispatch_module(string $module,string $tool,array $p): array {
     $ttl=$module==='codal'?3600:($module==='crypto'?30:15);
