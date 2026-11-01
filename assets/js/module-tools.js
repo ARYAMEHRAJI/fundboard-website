@@ -13,7 +13,20 @@ const toolSets={
   ['fund_list','فهرست صندوق‌های TSETMC','بدون ورودی',''],
   ['fund_profile','پروفایل صندوق و NAV','نماد یا کد صندوق','symbol'],
   ['market_map','نقشه بازار','نوع نقشه','type'],
-  ['etf_screener','غربالگر صندوق‌های ETF','دسته‌بندی','category']
+  ['etf_screener','غربالگر صندوق‌های ETF','دسته‌بندی','category'],
+  ['statistics','آمار ۸۸گانه نماد','نماد','symbol'],
+  ['shareholders','سهامداران عمده','نماد','symbol'],
+  ['messages','پیام‌ها و اطلاعیه‌های نماد','نماد','symbol'],
+  ['price_adjustments','تعدیلات قیمت','نماد','symbol'],
+  ['trades','معاملات روز','نماد','symbol'],
+  ['intraday','معاملات درون‌روزی','نماد','symbol'],
+  ['trade_volume','توزیع حجم معاملات','نماد','symbol'],
+  ['status','وضعیت نماد','نماد','symbol'],
+  ['option_chain','زنجیره اختیار معامله','نماد دارایی پایه','symbol'],
+  ['options_market','دیده‌بان اختیار معامله','بدون ورودی',''],
+  ['market_overview','نمای کلی بازار','جریان بازار','flow'],
+  ['index_overview','شاخص‌های منتخب','جریان بازار','flow'],
+  ['sectors','خلاصه صنایع','بدون ورودی','']
  ],
  codal:[
   ['company','جست‌وجوی ناشر','نام شرکت یا نماد','query'],
@@ -44,14 +57,14 @@ const paramsFor={
  compare:{quote:'IRT'},ticker:{exchange:'wallex',quote:'IRT'},orderbook:{exchange:'wallex',quote:'IRT',depth:10},
  trades:{exchange:'wallex',quote:'IRT',limit:20},candles:{exchange:'wallex',quote:'IRT',interval:'1h',days:7},
  movers:{exchange:'wallex',quote:'IRT',direction:'gainers',limit:10},markets:{exchange:'wallex',quote:'IRT'},
- best_execution:{exchange:'wallex',quote:'IRT',side:'buy',amount:10000000},arbitrage:{quote:'IRT'},fees:{exchange:'wallex'},fund_profile:{symbol:'اهرم'},market_map:{market:0,type:1,limit:1500},etf_screener:{category:'ETF',flow:0,limit:50}
+ best_execution:{exchange:'wallex',quote:'IRT',side:'buy',amount:10000000},arbitrage:{quote:'IRT'},fees:{exchange:'wallex'},fund_profile:{symbol:'اهرم'},market_map:{market:0,type:1,limit:1500},etf_screener:{category:'ETF',flow:0,limit:50},statistics:{symbol:'اهرم'},shareholders:{symbol:'اهرم'},messages:{symbol:'اهرم'},price_adjustments:{symbol:'اهرم'},trades:{symbol:'اهرم'},intraday:{symbol:'اهرم'},trade_volume:{symbol:'اهرم'},status:{symbol:'اهرم'},option_chain:{symbol:'اهرم'},market_overview:{flow:1},index_overview:{flow:1}
 };
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function currentView(){return document.querySelector('#dynamicView')}
 function render(module){
  const host=currentView();if(!host)return;
  const tools=toolSets[module]; if(!tools)return;
- const supported=module==='stocks'?new Set(['search','quote','movers','orderbook','history','flow','indices','index_history','fund_list','fund_profile','market_map','etf_screener']):module==='codal'?new Set(['company','search_letters','categories','financial_years','letter']):new Set(['exchanges','compare','ticker','markets','orderbook','trades','candles','movers','best_execution','arbitrage','overview']);
+ const supported=module==='stocks'?new Set(['search','quote','movers','orderbook','history','flow','indices','index_history','fund_list','fund_profile','market_map','etf_screener','statistics','shareholders','messages','price_adjustments','trades','intraday','trade_volume','status','option_chain','options_market','market_overview','index_overview','sectors']):module==='codal'?new Set(['company','search_letters','categories','financial_years','letter']):new Set(['exchanges','compare','ticker','markets','orderbook','trades','candles','movers','best_execution','arbitrage','overview']);
  host.innerHTML='<div class="view-intro"><h2>'+titles[module]+'</h2><p>ابزارهای داده‌ای متناظر با قابلیت‌های پروژه مرجع؛ تمام درخواست‌ها از PHP روی هاست اجرا می‌شوند.</p></div>'+
  '<div class="tool-layout"><div class="tool-list"><h3>انتخاب ابزار</h3>'+tools.map(([id,label])=>'<button class="tool-choice '+(supported.has(id)?'':'tool-pending')+'" data-module-tool="'+id+'"><span>'+esc(label)+'</span><small>'+(supported.has(id)?'قابل اجرا':'در صف پیاده‌سازی')+'</small></button>').join('')+'</div>'+
  '<div class="tool-workspace"><div class="tool-description"><h3 id="toolTitle">یک ابزار را انتخاب کن</h3><p id="toolDesc">برای دریافت داده، ابزار موردنظر را از فهرست انتخاب کن.</p></div><div id="toolForm"></div><div id="toolResult" class="tool-result"><div class="data-empty">خروجی ابزار در این قسمت نمایش داده می‌شود.</div></div></div></div>';
@@ -99,6 +112,10 @@ async function runTool(module,id,fd){
   if(!j.success)throw new Error(j.message||'دریافت اطلاعات ناموفق بود');
   const data=j.data||{};
   let visual='';
+  if(id==='statistics'&&Array.isArray(data.items)){visual='<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>شاخص</th><th>مقدار</th><th>دسته</th></tr></thead><tbody>'+data.items.map(x=>'<tr><td>'+esc(x.dataTypeDesc||x.dataType)+'</td><td>'+esc(x.dataValue)+'</td><td>'+esc(x.partitionCode)+'</td></tr>').join('')+'</tbody></table></div>';}
+  if(id==='shareholders'&&Array.isArray(data.holders)){visual='<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>سهامدار</th><th>درصد مالکیت</th><th>تعداد سهم</th><th>تغییر</th></tr></thead><tbody>'+data.holders.map(x=>'<tr><td>'+esc(x.shareHolderName)+'</td><td>'+esc(x.perOfShares)+'٪</td><td>'+esc(x.numberOfShares)+'</td><td>'+esc(x.changeAmount)+'</td></tr>').join('')+'</tbody></table></div>';}
+  if(id==='messages'&&Array.isArray(data.messages)){visual='<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>عنوان</th><th>تاریخ</th><th>شرح</th></tr></thead><tbody>'+data.messages.map(x=>'<tr><td>'+esc(x.tseTitle)+'</td><td>'+esc(x.dEven)+'</td><td>'+esc(x.tseDesc)+'</td></tr>').join('')+'</tbody></table></div>';}
+  if((id==='trades'||id==='intraday')&&Array.isArray(data.trades)){visual='<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>زمان</th><th>قیمت</th><th>حجم</th><th>شناسه</th></tr></thead><tbody>'+data.trades.map(x=>'<tr><td>'+esc(x.hEven||x.time)+'</td><td>'+esc(x.pTran||x.price)+'</td><td>'+esc(x.qTitTran||x.volume)+'</td><td>'+esc(x.nTran||x.tradeId)+'</td></tr>').join('')+'</tbody></table></div>';}
   if(id==='etf_screener'&&Array.isArray(data.rows)){visual='<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>نماد</th><th>نام صندوق</th><th>آخرین قیمت</th><th>قیمت پایانی</th><th>تغییر٪</th><th>حجم</th><th>ارزش</th></tr></thead><tbody>'+data.rows.map(x=>'<tr><td><b>'+esc(x.symbol)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.last)+'</td><td>'+esc(x.close)+'</td><td>'+esc(x.change_pct)+'٪</td><td>'+esc(x.volume)+'</td><td>'+esc(x.value_rial)+'</td></tr>').join('')+'</tbody></table></div>';}
   if(id==='history'&&Array.isArray(data.rows)&&data.rows.length){visual='<div id="moduleHistoryChart" class="chart chart-tall"></div>';}
   if(id==='index_history'&&Array.isArray(data.rows)&&data.rows.length){visual='<div id="moduleHistoryChart" class="chart chart-tall"></div>';}
