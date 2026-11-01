@@ -102,9 +102,9 @@ if ($action === 'profile') {
         if ($kind === 'stock') {
             $quote = fb_dispatch_module('tsetmc','quote',['symbol'=>$id]);
             $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>180,'1y'=>365,'all'=>500][$range];
-            $hist = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>$days]);
-            $history=$hist['rows']??[];
-            $research=fb_build_research('stock',$id,$history,(string)($quote['symbol']??$id));
+            $hist = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>500]);
+            $fullHistory=$hist['rows']??[];$history=array_slice($fullHistory,-$days);
+            $research=fb_build_research('stock',$id,$fullHistory,(string)($quote['symbol']??$id));
             $disclosures=array_slice($research['events']??[],0,12);
             $codalCompany=[];try{$codalCompany=fb_dispatch_module('codal','company',['query'=>$quote['symbol']??$id]);}catch(Throwable $e){}
             respond(['success'=>true,'status'=>'live','kind'=>'stock','profile'=>$quote,'history'=>$history,'disclosures'=>$disclosures,'research'=>$research,'codal_company'=>$codalCompany['companies'][0]??null,'fetched_at'=>date(DATE_ATOM)]);
