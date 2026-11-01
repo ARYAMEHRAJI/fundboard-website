@@ -58,6 +58,7 @@ date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
  <button class="feature-card" data-view="stocks"><span class="feature-icon blue">▥</span><b>رصد بورس</b><small>شاخص‌ها، نمادها، تابلو و معاملات حقیقی‌ـ‌حقوقی</small><span class="feature-arrow">←</span></button>
  <button class="feature-card" data-view="gold"><span class="feature-icon gold">◇</span><b>طلا و ارز</b><small>قیمت‌ها، حباب، بازدهی و مقایسه بازارها</small><span class="feature-arrow">←</span></button>
  <button class="feature-card" data-view="crypto"><span class="feature-icon green">₿</span><b>مرکز رمزارز</b><small>قیمت صرافی‌ها، اختلاف قیمت و نمودار کندل</small><span class="feature-arrow">←</span></button>
+ <button class="feature-card" data-view="intelligence"><span class="feature-icon violet">✧</span><b>اتاق هوش بازار</b><small>نقشه حرارتی، رویدادهای کدال و واگرایی جریان پول</small><span class="feature-arrow">←</span></button>
 </div>
 <div class="content-grid lower-grid">
  <section class="panel"><div class="panel-head"><div><h3>آخرین اطلاعیه‌ها</h3><p>جریان اطلاع‌رسانی ناشران و صندوق‌ها</p></div><button class="text-btn" data-view="codal">همه اطلاعیه‌ها ←</button></div><div id="disclosures" class="empty-state">برای نمایش اطلاعیه‌های کدال، اتصال منبع مربوطه را فعال کنید.</div></section>
