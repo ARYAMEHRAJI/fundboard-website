@@ -163,7 +163,7 @@ function fb_codal(string $tool, array $p): array {
             $html=fb_http_text($page);
             if(preg_match('/var datasource = /',$html,$m,PREG_OFFSET_CAPTURE)){
                 $start=$m[0][1]+strlen($m[0][0]);$json=substr($html,$start);$depth=0;$quoted=false;$escape=false;$end=0;
-                for($i=0,$n=strlen($json);$i<$n;$i++){ $ch=$json[$i]; if($quoted){if($escape)$escape=false;elseif($ch==='\\\\')$escape=true;elseif($ch==='"')$quoted=false;continue;} if($ch==='"'){$quoted=true;continue;} if($ch==='{')$depth++;elseif($ch==='}'){$depth--;if($depth===0){$end=$i+1;break;}}}
+                for($i=0,$n=strlen($json);$i<$n;$i++){ $ch=$json[$i]; if($quoted){if($escape)$escape=false;elseif($ch==='\\')$escape=true;elseif($ch==='"')$quoted=false;continue;} if($ch==='"'){$quoted=true;continue;} if($ch==='{')$depth++;elseif($ch==='}'){$depth--;if($depth===0){$end=$i+1;break;}}}
                 $ds=$end?json_decode(substr($json,0,$end),true):null;
                 if(is_array($ds)){
                     $out['report']=$ds['title_Fa']??null;$out['period_months']=$ds['period']??null;$out['period_end']=$ds['periodEndToDate']??null;
