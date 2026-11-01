@@ -12,7 +12,8 @@ const toolSets={
   ['index_history','تاریخچه شاخص','نام شاخص','index'],
   ['fund_list','فهرست صندوق‌های TSETMC','بدون ورودی',''],
   ['fund_profile','پروفایل صندوق و NAV','نماد یا کد صندوق','symbol'],
-  ['market_map','نقشه بازار','نوع نقشه','type']
+  ['market_map','نقشه بازار','نوع نقشه','type'],
+  ['etf_screener','غربالگر صندوق‌های ETF','دسته‌بندی','category']
  ],
  codal:[
   ['company','جست‌وجوی ناشر','نام شرکت یا نماد','query'],
@@ -43,14 +44,14 @@ const paramsFor={
  compare:{quote:'IRT'},ticker:{exchange:'wallex',quote:'IRT'},orderbook:{exchange:'wallex',quote:'IRT',depth:10},
  trades:{exchange:'wallex',quote:'IRT',limit:20},candles:{exchange:'wallex',quote:'IRT',interval:'1h',days:7},
  movers:{exchange:'wallex',quote:'IRT',direction:'gainers',limit:10},markets:{exchange:'wallex',quote:'IRT'},
- best_execution:{exchange:'wallex',quote:'IRT',side:'buy',amount:10000000},arbitrage:{quote:'IRT'},fees:{exchange:'wallex'}
+ best_execution:{exchange:'wallex',quote:'IRT',side:'buy',amount:10000000},arbitrage:{quote:'IRT'},fees:{exchange:'wallex'},fund_profile:{symbol:'اهرم'},market_map:{market:0,type:1,limit:1500},etf_screener:{category:'ETF',flow:0,limit:50}
 };
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function currentView(){return document.querySelector('#dynamicView')}
 function render(module){
  const host=currentView();if(!host)return;
  const tools=toolSets[module]; if(!tools)return;
- const supported=module==='stocks'?new Set(['search','quote','movers','orderbook','history','flow','indices','index_history','fund_list','fund_profile','market_map']):module==='codal'?new Set(['company','search_letters','categories','financial_years','letter']):new Set(['exchanges','compare','ticker','markets','orderbook','trades','candles','movers','best_execution','arbitrage','overview']);
+ const supported=module==='stocks'?new Set(['search','quote','movers','orderbook','history','flow','indices','index_history','fund_list','fund_profile','market_map','etf_screener']):module==='codal'?new Set(['company','search_letters','categories','financial_years','letter']):new Set(['exchanges','compare','ticker','markets','orderbook','trades','candles','movers','best_execution','arbitrage','overview']);
  host.innerHTML='<div class="view-intro"><h2>'+titles[module]+'</h2><p>ابزارهای داده‌ای متناظر با قابلیت‌های پروژه مرجع؛ تمام درخواست‌ها از PHP روی هاست اجرا می‌شوند.</p></div>'+
  '<div class="tool-layout"><div class="tool-list"><h3>انتخاب ابزار</h3>'+tools.map(([id,label])=>'<button class="tool-choice '+(supported.has(id)?'':'tool-pending')+'" data-module-tool="'+id+'"><span>'+esc(label)+'</span><small>'+(supported.has(id)?'قابل اجرا':'در صف پیاده‌سازی')+'</small></button>').join('')+'</div>'+
  '<div class="tool-workspace"><div class="tool-description"><h3 id="toolTitle">یک ابزار را انتخاب کن</h3><p id="toolDesc">برای دریافت داده، ابزار موردنظر را از فهرست انتخاب کن.</p></div><div id="toolForm"></div><div id="toolResult" class="tool-result"><div class="data-empty">خروجی ابزار در این قسمت نمایش داده می‌شود.</div></div></div></div>';
