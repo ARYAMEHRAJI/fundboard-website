@@ -39,7 +39,7 @@ date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Tehran');
 </header>
 <section class="page-content">
 <div class="welcome-row"><div><div class="date-line" id="todayLabel">نمای یکپارچه بازار</div><h2>تصویر روشن‌تری از <em>بازار</em> داشته باش.</h2><p>داده‌ها، روندها و فرصت‌ها را در یک نگاه دنبال کن.</p></div><div class="hero-actions"><button class="btn btn-ghost" id="exportBtn">↓ خروجی CSV</button><button class="btn btn-primary" data-view="screener">باز کردن دیده‌بان <b>←</b></button></div></div>
-<div class="notice"><span>ⓘ</span><div><b>نسخه راه‌اندازی اولیه</b><small>داده‌های متصل از منابع اصلی دریافت می‌شوند؛ هر شاخص فاقد منبع، خالی نمایش داده می‌شود.</small></div><span class="notice-tag">DEMO DATA</span></div>
+<div class="notice"><span>ⓘ</span><div><b>نسخه تحلیلی فاندبورد</b><small>داده‌های متصل از منابع اصلی دریافت می‌شوند؛ هر شاخص فاقد منبع، خالی نمایش داده می‌شود.</small></div><span class="notice-tag">SOURCE DATA</span></div>
 <div class="section-heading"><div><h3>نبض بازار</h3><p>نمای کلی شاخص‌های منتخب</p></div><span class="muted">آخرین وضعیت ثبت‌شده</span></div>
 <div class="metric-grid" id="marketMetrics">
   <article class="metric-card"><div class="metric-top"><span>شاخص کل بورس</span><span class="metric-icon violet">▥</span></div><strong>—</strong><small>در انتظار اتصال منبع</small></article>
