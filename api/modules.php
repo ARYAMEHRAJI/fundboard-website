@@ -96,6 +96,13 @@ function fb_tsetmc(string $tool, array $p): array {
         usort($rows,function($a,$b)use($key,$sort,$pct){$av=$key==='change'?($pct($a['pdv']??null,$a['py']??null)??0):($a[$key]??0);$bv=$key==='change'?($pct($b['pdv']??null,$b['py']??null)??0):($b[$key]??0);return ($sort==='loss'?$av<=>$bv:$bv<=>$av);});
         return ['unit'=>'rial','rows'=>array_map(fn($r)=>['symbol'=>fb_fa((string)($r['lva']??'')),'name'=>fb_fa((string)($r['lvc']??'')),'ins_code'=>$r['insCode']??null,'last'=>$num($r['pdv']??null),'change_pct'=>$pct($r['pdv']??null,$r['py']??null),'volume'=>$num($r['qtj']??null),'trades'=>$num($r['ztt']??null),'value_rial'=>$num($r['qtc']??null),'limit_up'=>isset($r['pMax'])&&$r['pdv']>=$r['pMax'],'limit_down'=>isset($r['pMin'])&&$r['pdv']<=$r['pMin']],array_slice($rows,0,30))];
     }
+    if($tool==='index_history'){
+        $index=fb_fa((string)($p['index']??'شاخص کل'));$idx=fb_http_json($base.'/Index/GetIndexB1LastAll/All/1')['indexB1']??[];
+        $hits=array_values(array_filter($idx,fn($x)=>mb_stripos(fb_fa((string)($x['lVal30']??'')),$index)!==false));
+        if(!$hits) throw new RuntimeException('شاخص موردنظر پیدا نشد.');
+        $code=$hits[0]['insCode'];$history=fb_http_json($base.'/Index/GetIndexB2History/'.$code)['indexB2']??[];
+        return ['index'=>fb_fa((string)$hits[0]['lVal30']),'rows'=>array_slice($history,-max(2,min(100,(int)($p['days']??30))))];
+    }
     [$ins,$ticker]=$resolve();
     if(!$ins) throw new RuntimeException('نماد پیدا نشد یا چند نتیجه مشابه دارد؛ ابتدا جست‌وجوی نماد را اجرا کنید.');
     if($tool==='quote'){
@@ -113,13 +120,6 @@ function fb_tsetmc(string $tool, array $p): array {
         if($tool==='history') return ['symbol'=>$ticker,'unit'=>'rial','rows'=>array_map(fn($r)=>['date'=>$r['dEven']??null,'open'=>$num($r['priceFirst']??null),'high'=>$num($r['priceMax']??null),'low'=>$num($r['priceMin']??null),'close'=>$num($r['pClosing']??null),'last'=>$num($r['pDrCotVal']??null),'volume'=>$num($r['qTotTran5J']??null),'trades'=>$num($r['zTotTran']??null),'value_rial'=>$num($r['qTotCap']??null)],$rows)];
         $out=[]; foreach($rows as $r){$d=(string)($r['dEven']??'');if(!$d)continue;$c=fb_http_json($base.'/ClientType/GetClientTypeHistory/'.$ins.'/'.$d)['clientType']??null;if($c)$out[]=['date'=>$d,'real_buy_volume'=>$num($c['buy_I_Volume']??null),'real_sell_volume'=>$num($c['sell_I_Volume']??null),'legal_buy_volume'=>$num($c['buy_N_Volume']??null),'legal_sell_volume'=>$num($c['sell_N_Volume']??null),'net_real_volume'=>$num(($c['buy_I_Volume']??0)-($c['sell_I_Volume']??0))];}
         return ['symbol'=>$ticker,'unit'=>'rial','rows'=>$out];
-    }
-    if($tool==='index_history'){
-        $index=fb_fa((string)($p['index']??'شاخص کل'));$idx=fb_http_json($base.'/Index/GetIndexB1LastAll/All/1')['indexB1']??[];
-        $hits=array_values(array_filter($idx,fn($x)=>mb_stripos(fb_fa((string)($x['lVal30']??'')),$index)!==false));
-        if(!$hits) throw new RuntimeException('شاخص موردنظر پیدا نشد.');
-        $code=$hits[0]['insCode'];$history=fb_http_json($base.'/Index/GetIndexB2History/'.$code)['indexB2']??[];
-        return ['index'=>fb_fa((string)$hits[0]['lVal30']),'rows'=>array_slice($history,-max(2,min(100,(int)($p['days']??30))))];
     }
     throw new InvalidArgumentException('ابزار TSETMC ناشناخته است.');
 }
