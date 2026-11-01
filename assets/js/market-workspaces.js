@@ -53,18 +53,44 @@ function renderScreener(){
  $('#screenRun').onclick=run;run();
 }
 function renderCompare(){
- const body=base('مقایسه دارایی‌ها','تا چهار نماد سهم یا صندوق ETF را وارد کن؛ شاخص مبنا برای مقایسه از اولین قیمت هر سری برابر ۱۰۰ محاسبه می‌شود.');
+ const body=base('مقایسه چندبعدی دارایی‌ها','تا چهار سهم یا ETF را کنار هم بررسی کن: بازده نسبی، نوسان، بیشترین افت و همبستگی بازده روزانه؛ بدون نیاز به محاسبه دستی.');
  if(!body)return;
- body.innerHTML='<div class="workspace-toolbar"><input id="compareSymbol" placeholder="نماد؛ مثال: فولاد، افران"><button id="compareAdd" class="btn btn-primary">افزودن نماد</button><span id="compareCount">۰ از ۴</span></div><div id="compareSelected" class="compare-chips"></div><div id="compareChart" class="chart chart-tall"></div><div id="compareTable"></div>';
+ body.innerHTML='<div class="workspace-toolbar"><input id="compareSymbol" placeholder="نماد؛ مثال: فولاد، افران"><button id="compareAdd" class="btn btn-primary">افزودن نماد</button><span id="compareCount">۰ از ۴</span></div><div id="compareSelected" class="compare-chips"></div><div class="panel"><div class="panel-head"><div><h3>مقایسه بازده تجمعی</h3><p>شروع همه سری‌ها از مبنای ۱۰۰</p></div><span class="status-pill">TSETMC · ۹۰ جلسه</span></div><div id="compareChart" class="chart chart-tall"></div></div><div class="panel"><div class="panel-head"><div><h3>مقایسه ریسک و عملکرد</h3><p>بازده، نوسان سالانه‌شده و بیشترین افت در بازه مشترک</p></div></div><div id="compareTable"></div></div><div class="panel"><div class="panel-head"><div><h3>ماتریس همبستگی</h3><p>همبستگی بازده روزانه؛ نزدیک به ۱ یعنی حرکت مشابه‌تر</p></div></div><div id="compareCorrelation"></div></div>';
  selected=[];$('#compareAdd').onclick=()=>{const v=$('#compareSymbol').value.trim();if(v&&selected.length<4&&!selected.includes(v)){selected.push(v);$('#compareSymbol').value='';drawCompare()}};
+}
+function correlation(a,b){
+ const ma=new Map(a.map(x=>[x.date,x.value])),pairs=b.filter(x=>ma.has(x.date)).map(x=>[ma.get(x.date),x.value]);
+ if(pairs.length<5)return null;const ax=pairs.map(x=>x[0]),bx=pairs.map(x=>x[1]),am=ax.reduce((x,y)=>x+y,0)/ax.length,bm=bx.reduce((x,y)=>x+y,0)/bx.length;
+ let cov=0,av=0,bv=0;for(let i=0;i<pairs.length;i++){const x=ax[i]-am,y=bx[i]-bm;cov+=x*y;av+=x*x;bv+=y*y}
+ return av&&bv?cov/Math.sqrt(av*bv):null;
 }
 async function drawCompare(){
  $('#compareCount').textContent=fmt(selected.length)+' از ۴';$('#compareSelected').innerHTML=selected.map(id=>'<button class="compare-chip" data-remove="'+esc(id)+'">'+esc(id)+' ×</button>').join('');$('#compareSelected').querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{selected=selected.filter(x=>x!==b.dataset.remove);drawCompare()});
  if(workspaceChart){workspaceChart.dispose();workspaceChart=null}
- const series=[],tableRows=[];
- for(const symbol of selected){try{const j=await get('api/?action=profile&kind=stock&id='+encodeURIComponent(symbol)+'&range=3m');const rows=j.history||[];const vals=rows.map(x=>Number(x.close)).filter(Number.isFinite);if(vals.length<2)continue;const first=vals[0];series.push({name:symbol,type:'line',data:vals.map(v=>v/first*100),symbol:'none',smooth:true});tableRows.push({name:symbol,return:(vals.at(-1)/first-1)*100})}catch(e){}}
- if(series.length){workspaceChart=echarts.init($('#compareChart'));const max=Math.max(...series.map(x=>x.data.length));workspaceChart.setOption({tooltip:{trigger:'axis'},legend:{textStyle:{color:'#9aa9be'}},grid:{left:55,right:20,top:35,bottom:35},xAxis:{type:'category',data:Array.from({length:max},(_,i)=>String(i+1)),axisLabel:{color:'#8796ad'}},yAxis:{type:'value',name:'مبنای ۱۰۰',axisLabel:{color:'#8796ad'},splitLine:{lineStyle:{color:'#26364b'}}},series})}
- $('#compareTable').innerHTML=tableRows.length?'<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>نماد</th><th>بازده دوره دریافت‌شده</th></tr></thead><tbody>'+tableRows.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+fmt(x.return)+'٪</td></tr>').join('')+'</tbody></table></div>':'<div class="data-empty">برای نمادهای واردشده تاریخچه قابل‌مقایسه دریافت نشد.</div>';
+ const series=[],tableRows=[],dataSets=[];
+ for(const symbol of selected){
+  try{
+   const j=await get('api/?action=module&module=tsetmc&tool=history&symbol='+encodeURIComponent(symbol)+'&days=90');
+   const rows=(j.data?.rows||[]).slice().sort((a,b)=>Number(a.date)-Number(b.date));
+   const valid=rows.filter(x=>Number(x.close)>0);if(valid.length<6)continue;
+   const first=Number(valid[0].close),vals=valid.map(x=>Number(x.close));
+   const daily=[];for(let i=1;i<valid.length;i++)daily.push({date:String(valid[i].date),value:vals[i]/vals[i-1]-1});
+   const mean=daily.reduce((a,x)=>a+x.value,0)/daily.length;
+   const vol=Math.sqrt(daily.reduce((a,x)=>a+(x.value-mean)**2,0)/Math.max(1,daily.length-1))*Math.sqrt(252)*100;
+   let peak=vals[0],dd=0;for(const v of vals){peak=Math.max(peak,v);dd=Math.min(dd,v/peak-1)}
+   const ret=(vals.at(-1)/first-1)*100;
+   series.push({name:symbol,type:'line',data:vals.map(v=>v/first*100),symbol:'none',smooth:true});
+   tableRows.push({name:symbol,return:ret,volatility:vol,drawdown:dd*100,observations:valid.length});
+   dataSets.push({name:symbol,daily});
+  }catch(e){}
+ }
+ if(series.length){
+  workspaceChart=echarts.init($('#compareChart'));const max=Math.max(...series.map(x=>x.data.length));
+  workspaceChart.setOption({tooltip:{trigger:'axis'},legend:{textStyle:{color:'#9aa9be'}},grid:{left:55,right:20,top:35,bottom:35},xAxis:{type:'category',data:Array.from({length:max},(_,i)=>String(i+1)),axisLabel:{color:'#8796ad'}},yAxis:{type:'value',name:'مبنای ۱۰۰',axisLabel:{color:'#8796ad'},splitLine:{lineStyle:{color:'#26364b'}}},series});
+ }
+ $('#compareTable').innerHTML=tableRows.length?'<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>نماد</th><th>بازده ۹۰ جلسه</th><th>نوسان سالانه‌شده</th><th>بیشترین افت</th><th>تعداد داده</th></tr></thead><tbody>'+tableRows.map(x=>'<tr><td><b>'+esc(x.name)+'</b></td><td class="'+(x.return>=0?'positive':'negative')+'">'+fmt(x.return)+'٪</td><td>'+fmt(x.volatility)+'٪</td><td class="negative">'+fmt(x.drawdown)+'٪</td><td>'+fmt(x.observations)+'</td></tr>').join('')+'</tbody></table></div>':'<div class="data-empty">برای نمادهای واردشده تاریخچه کافی از TSETMC دریافت نشد.</div>';
+ const corr=$('#compareCorrelation');
+ corr.innerHTML=dataSets.length>1?'<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>نماد</th>'+dataSets.map(x=>'<th>'+esc(x.name)+'</th>').join('')+'</tr></thead><tbody>'+dataSets.map(a=>'<tr><td><b>'+esc(a.name)+'</b></td>'+dataSets.map(b=>{const v=correlation(a.daily,b.daily);return '<td>'+ (v==null?'—':fmt(v*100)+'٪')+'</td>'}).join('')+'</tr>').join('')+'</tbody></table></div>':'<div class="data-empty">برای ساخت ماتریس همبستگی، دست‌کم دو نماد با تاریخچه مشترک اضافه کن.</div>';
 }
 function renderPortfolio(){
  const body=base('پرتفوی من','ثبت دارایی و محاسبه سود و زیان بر مبنای قیمت تابلو. داده‌های این نسخه فقط در مرورگر همین دستگاه ذخیره می‌شود.');
