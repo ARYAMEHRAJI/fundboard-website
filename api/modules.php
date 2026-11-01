@@ -77,6 +77,18 @@ function fb_tsetmc(string $tool, array $p): array {
     };
     $pct=fn($a,$b)=>($a && $b)?round(($a-$b)/$b*100,2):null;
     $num=fn($x)=>is_numeric($x)?(0+(float)$x):null;
+    if($tool==='market_map'){
+        $market=max(0,min(4,(int)($p['market']??0)));
+        $size=max(100,min(3000,(int)($p['limit']??1500)));
+        $sector=max(0,(int)($p['sector']??0));
+        $type=max(1,min(4,(int)($p['type']??1)));
+        $d=fb_http_json($base.'/ClosingPrice/GetMarketMap?market='.$market.'&size='.$size.'&sector='.$sector.'&typeSelected='.$type.'&hEven=0',[],20);
+        $items=[];
+        foreach($d as $x){
+            $items[]=['ins_code'=>$x['insCode']??null,'symbol'=>fb_fa((string)($x['lVal18AFC']??'')),'name'=>fb_fa((string)($x['lVal30']??'')),'sector'=>fb_fa((string)($x['lSecVal']??'')),'close'=>$num($x['pClosing']??null),'last'=>$num($x['pDrCotVal']??null),'change_pct'=>$num($x['priceChangePercent']??$x['percent']??null),'volume'=>$num($x['qTotTran5J']??null),'value_rial'=>$num($x['qTotCap']??null),'color'=>$x['color']??null];
+        }
+        return ['items'=>$items,'count'=>count($items),'market'=>$market,'type'=>$type,'source'=>'TSETMC Market Map'];
+    }
     if($tool==='fund_list'){
         $types=[4=>'درآمد ثابت',5=>'کالایی',6=>'سهامی',7=>'مختلط',11=>'بازارگردانی',12=>'سرمایه‌گذاری خطرپذیر',13=>'پروژه‌ای',14=>'املاک و مستغلات',16=>'خصوصی',17=>'سایر'];
         $out=[];$errors=[];
