@@ -47,3 +47,5 @@
 .research-report .data-table td{white-space:normal;min-width:80px;font-size:10px}
 .research-report>a{display:inline-block;margin-top:8px;color:#a99cff;font-size:11px;text-decoration:none}
 .research-report-empty{color:var(--muted);font-size:11px;padding:10px 0}
+
+.profile-codal-company{display:block;color:#8495ad;font-size:10px;margin-top:5px}
