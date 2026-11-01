@@ -77,6 +77,16 @@ function fb_tsetmc(string $tool, array $p): array {
     };
     $pct=fn($a,$b)=>($a && $b)?round(($a-$b)/$b*100,2):null;
     $num=fn($x)=>is_numeric($x)?(0+(float)$x):null;
+    if($tool==='etf_screener'){
+        $category=(string)($p['category']??'ETF');
+        $allowed=['ETF','MostTradedETF','PClosingTopETF','PClosingBtmETF','CommodityFund','MostVisited'];
+        if(!in_array($category,$allowed,true))throw new InvalidArgumentException('دسته‌بندی غربالگر ETF نامعتبر است.');
+        $flow=max(0,min(4,(int)($p['flow']??0)));$top=max(1,min(100,(int)($p['limit']??50)));
+        $d=fb_http_json($base.'/ClosingPrice/GetTradeTop/'.$category.'/'.$flow.'/'.$top,[],18);
+        $items=$d['tradeTop']??[];$rows=[];
+        foreach($items as $x){$inst=$x['instrument']??[];$rows[]=['ins_code'=>$x['insCode']??$inst['insCode']??null,'symbol'=>fb_fa((string)($inst['lVal18AFC']??$x['lVal18AFC']??'')),'name'=>fb_fa((string)($inst['lVal30']??$x['lVal30']??'')),'last'=>$num($x['pDrCotVal']??null),'close'=>$num($x['pClosing']??null),'change_pct'=>$num($x['priceChange']??$x['priceChangePercent']??null),'volume'=>$num($x['qTotTran5J']??null),'value_rial'=>$num($x['qTotCap']??null),'raw'=>$x];}
+        return ['category'=>$category,'flow'=>$flow,'rows'=>$rows,'count'=>count($rows)];
+    }
     if($tool==='market_map'){
         $market=max(0,min(4,(int)($p['market']??0)));
         $size=max(100,min(3000,(int)($p['limit']??1500)));
