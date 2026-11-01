@@ -11,7 +11,8 @@ const toolSets={
   ['indices','شاخص‌ها و صنایع','نام شاخص یا صنعت (اختیاری)','query'],
   ['index_history','تاریخچه شاخص','نام شاخص','index'],
   ['fund_list','فهرست صندوق‌های TSETMC','بدون ورودی',''],
-  ['fund_profile','پروفایل صندوق و NAV','نماد یا کد صندوق','symbol']
+  ['fund_profile','پروفایل صندوق و NAV','نماد یا کد صندوق','symbol'],
+  ['market_map','نقشه بازار','نوع نقشه','type']
  ],
  codal:[
   ['company','جست‌وجوی ناشر','نام شرکت یا نماد','query'],
@@ -49,7 +50,7 @@ function currentView(){return document.querySelector('#dynamicView')}
 function render(module){
  const host=currentView();if(!host)return;
  const tools=toolSets[module]; if(!tools)return;
- const supported=module==='stocks'?new Set(['search','quote','movers','orderbook','history','flow','indices','index_history','fund_list','fund_profile']):module==='codal'?new Set(['company','search_letters','categories','financial_years','letter']):new Set(['exchanges','compare','ticker','markets','orderbook','trades','candles','movers','best_execution','arbitrage','overview']);
+ const supported=module==='stocks'?new Set(['search','quote','movers','orderbook','history','flow','indices','index_history','fund_list','fund_profile','market_map']):module==='codal'?new Set(['company','search_letters','categories','financial_years','letter']):new Set(['exchanges','compare','ticker','markets','orderbook','trades','candles','movers','best_execution','arbitrage','overview']);
  host.innerHTML='<div class="view-intro"><h2>'+titles[module]+'</h2><p>ابزارهای داده‌ای متناظر با قابلیت‌های پروژه مرجع؛ تمام درخواست‌ها از PHP روی هاست اجرا می‌شوند.</p></div>'+
  '<div class="tool-layout"><div class="tool-list"><h3>انتخاب ابزار</h3>'+tools.map(([id,label])=>'<button class="tool-choice '+(supported.has(id)?'':'tool-pending')+'" data-module-tool="'+id+'"><span>'+esc(label)+'</span><small>'+(supported.has(id)?'قابل اجرا':'در صف پیاده‌سازی')+'</small></button>').join('')+'</div>'+
  '<div class="tool-workspace"><div class="tool-description"><h3 id="toolTitle">یک ابزار را انتخاب کن</h3><p id="toolDesc">برای دریافت داده، ابزار موردنظر را از فهرست انتخاب کن.</p></div><div id="toolForm"></div><div id="toolResult" class="tool-result"><div class="data-empty">خروجی ابزار در این قسمت نمایش داده می‌شود.</div></div></div></div>';
@@ -97,6 +98,7 @@ async function runTool(module,id,fd){
   if(!j.success)throw new Error(j.message||'دریافت اطلاعات ناموفق بود');
   const data=j.data||{};
   let visual='';
+  if(id==='market_map'&&Array.isArray(data.items)&&data.items.length){visual='<div id="marketTreemap" class="chart chart-tall"></div>';}
   if(id==='candles'&&Array.isArray(data.rows)&&data.rows.length){
    visual='<div id="cryptoCandleChart" class="chart chart-tall"></div><div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>زمان</th><th>باز</th><th>بیشینه</th><th>کمینه</th><th>بسته</th><th>حجم</th></tr></thead><tbody>'+data.rows.slice(-30).map(x=>'<tr><td>'+esc(x.time)+'</td><td>'+esc(x.open)+'</td><td>'+esc(x.high)+'</td><td>'+esc(x.low)+'</td><td>'+esc(x.close)+'</td><td>'+esc(x.volume)+'</td></tr>').join('')+'</tbody></table></div>';
   }else if(id==='orderbook'){
@@ -109,6 +111,7 @@ async function runTool(module,id,fd){
   }
   result.innerHTML='<div class="result-head"><span class="status-pill">LIVE SOURCE RESPONSE</span><button class="text-btn" id="copyToolResult">کپی JSON</button></div>'+visual+'<pre class="json-output">'+esc(JSON.stringify(data,null,2))+'</pre>';
   $('#copyToolResult').addEventListener('click',()=>navigator.clipboard?.writeText(JSON.stringify(data,null,2)));
+  if(id==='market_map'&&Array.isArray(data.items)&&data.items.length&&window.echarts){const el=$('#marketTreemap');const c=echarts.init(el);c.setOption({tooltip:{formatter:x=>'<b>'+esc(x.data.name)+'</b><br>'+esc(x.data.sector||'')+'<br>ارزش: '+Number(x.data.value||0).toLocaleString('fa-IR')},series:[{type:'treemap',data:data.items.map(x=>({name:x.symbol||x.name,value:Math.max(1,Number(x.value_rial||0)),sector:x.sector,change:x.change_pct})),label:{show:true,formatter:'{b}',color:'#fff'},upperLabel:{show:false},breadcrumb:{show:false},itemStyle:{borderColor:'#0c1523',borderWidth:2,gapWidth:2}}]});}
   if(id==='candles'&&Array.isArray(data.rows)&&data.rows.length&&window.echarts){const el=$('#cryptoCandleChart');const c=echarts.init(el);c.setOption({tooltip:{trigger:'axis'},grid:{left:55,right:20,top:20,bottom:35},xAxis:{type:'category',data:data.rows.map(x=>new Date(Number(x.time)*1000).toLocaleString('fa-IR')),axisLabel:{color:'#8796ad',hideOverlap:true}},yAxis:{type:'value',scale:true,axisLabel:{color:'#8796ad'},splitLine:{lineStyle:{color:'#26364b'}}},series:[{type:'candlestick',data:data.rows.map(x=>[Number(x.open),Number(x.close),Number(x.low),Number(x.high)]),itemStyle:{color:'#36c99a',color0:'#ef7180',borderColor:'#36c99a',borderColor0:'#ef7180'}}]});}
  }catch(err){result.innerHTML='<div class="data-empty">'+esc(err.message)+'</div>'}
 }
