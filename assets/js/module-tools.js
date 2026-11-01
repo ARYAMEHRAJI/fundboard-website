@@ -99,6 +99,7 @@ async function runTool(module,id,fd){
   if(!j.success)throw new Error(j.message||'دریافت اطلاعات ناموفق بود');
   const data=j.data||{};
   let visual='';
+  if(id==='etf_screener'&&Array.isArray(data.rows)){visual='<div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>نماد</th><th>نام صندوق</th><th>آخرین قیمت</th><th>قیمت پایانی</th><th>تغییر٪</th><th>حجم</th><th>ارزش</th></tr></thead><tbody>'+data.rows.map(x=>'<tr><td><b>'+esc(x.symbol)+'</b></td><td>'+esc(x.name)+'</td><td>'+esc(x.last)+'</td><td>'+esc(x.close)+'</td><td>'+esc(x.change_pct)+'٪</td><td>'+esc(x.volume)+'</td><td>'+esc(x.value_rial)+'</td></tr>').join('')+'</tbody></table></div>';}
   if(id==='market_map'&&Array.isArray(data.items)&&data.items.length){visual='<div id="marketTreemap" class="chart chart-tall"></div>';}
   if(id==='candles'&&Array.isArray(data.rows)&&data.rows.length){
    visual='<div id="cryptoCandleChart" class="chart chart-tall"></div><div class="workspace-table-wrap"><table class="data-table"><thead><tr><th>زمان</th><th>باز</th><th>بیشینه</th><th>کمینه</th><th>بسته</th><th>حجم</th></tr></thead><tbody>'+data.rows.slice(-30).map(x=>'<tr><td>'+esc(x.time)+'</td><td>'+esc(x.open)+'</td><td>'+esc(x.high)+'</td><td>'+esc(x.low)+'</td><td>'+esc(x.close)+'</td><td>'+esc(x.volume)+'</td></tr>').join('')+'</tbody></table></div>';
