@@ -218,12 +218,17 @@ function fb_tsetmc(string $tool, array $p): array {
         $levels=fb_http_json($base.'/BestLimits/'.$ins)['bestLimits']??[];
         return ['symbol'=>$ticker,'unit'=>'rial','levels'=>array_map(fn($b)=>['level'=>$b['number']??null,'bid_price'=>$num($b['pMeDem']??null),'bid_volume'=>$num($b['qTitMeDem']??null),'bid_orders'=>$b['zOrdMeDem']??null,'ask_price'=>$num($b['pMeOf']??null),'ask_volume'=>$num($b['qTitMeOf']??null),'ask_orders'=>$b['zOrdMeOf']??null],$levels)];
     }
-    if($tool==='history'||$tool==='flow'){
-        $days=max(1,min($tool==='flow'?10:500,(int)($p['days']??20)));
+    if($tool==='history'){
+        $days=max(1,min(500,(int)($p['days']??20)));
         $rows=fb_http_json($base.'/ClosingPrice/GetClosingPriceDailyList/'.$ins.'/'.$days)['closingPriceDaily']??[];
-        if($tool==='history') return ['symbol'=>$ticker,'unit'=>'rial','rows'=>array_map(fn($r)=>['date'=>$r['dEven']??null,'open'=>$num($r['priceFirst']??null),'high'=>$num($r['priceMax']??null),'low'=>$num($r['priceMin']??null),'close'=>$num($r['pClosing']??null),'last'=>$num($r['pDrCotVal']??null),'volume'=>$num($r['qTotTran5J']??null),'trades'=>$num($r['zTotTran']??null),'value_rial'=>$num($r['qTotCap']??null)],$rows)];
-        $out=[]; foreach($rows as $r){$d=(string)($r['dEven']??'');if(!$d)continue;$c=fb_http_json($base.'/ClientType/GetClientTypeHistory/'.$ins.'/'.$d)['clientType']??null;if($c)$out[]=['date'=>$d,'real_buy_volume'=>$num($c['buy_I_Volume']??null),'real_sell_volume'=>$num($c['sell_I_Volume']??null),'legal_buy_volume'=>$num($c['buy_N_Volume']??null),'legal_sell_volume'=>$num($c['sell_N_Volume']??null),'net_real_volume'=>$num(($c['buy_I_Volume']??0)-($c['sell_I_Volume']??0))];}
-        return ['symbol'=>$ticker,'unit'=>'rial','rows'=>$out];
+        return ['symbol'=>$ticker,'unit'=>'rial','rows'=>array_map(fn($r)=>['date'=>$r['dEven']??null,'open'=>$num($r['priceFirst']??null),'high'=>$num($r['priceMax']??null),'low'=>$num($r['priceMin']??null),'close'=>$num($r['pClosing']??null),'last'=>$num($r['pDrCotVal']??null),'volume'=>$num($r['qTotTran5J']??null),'trades'=>$num($r['zTotTran']??null),'value_rial'=>$num($r['qTotCap']??null)],$rows)];
+    }
+    if($tool==='flow'){
+        $days=max(1,min(500,(int)($p['days']??30)));
+        $all=fb_http_json($base.'/ClientType/GetClientTypeHistory/'.$ins,[],20)['clientType']??[];
+        $rows=array_map(fn($c)=>['date'=>$c['dEven']??null,'real_buy_volume'=>$num($c['buy_I_Volume']??null),'real_sell_volume'=>$num($c['sell_I_Volume']??null),'legal_buy_volume'=>$num($c['buy_N_Volume']??null),'legal_sell_volume'=>$num($c['sell_N_Volume']??null),'net_real_volume'=>$num(($c['buy_I_Volume']??0)-($c['sell_I_Volume']??0)),'real_buy_value'=>$num($c['buy_I_Value']??null),'real_sell_value'=>$num($c['sell_I_Value']??null),'net_real_value'=>$num(($c['buy_I_Value']??0)-($c['sell_I_Value']??0))],$all);
+        usort($rows,fn($a,$b)=>(int)$a['date']<=>(int)$b['date']);
+        return ['symbol'=>$ticker,'unit'=>'rial','rows'=>array_slice($rows,-$days)];
     }
     throw new InvalidArgumentException('ابزار TSETMC ناشناخته است.');
 }
