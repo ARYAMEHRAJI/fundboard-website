@@ -108,7 +108,7 @@ if ($action === 'bridge') {
     if ($bridgeToken === '') respond(['success'=>false,'status'=>'not_configured','message'=>'توکن امنیتی Bridge تنظیم نشده است.']);
     if ($url === '') respond(['success'=>false,'status'=>'not_configured','message'=>'سرویس واسط این بخش تنظیم نشده است.']);
     if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['https'], true)) respond(['success'=>false,'status'=>'invalid_bridge_url'], 500);
-    $result = cached('bridge:' . $source, $ttl, static function() use ($url, $config): array {
+    $result = cached('bridge:' . $source, $ttl, static function() use ($url, $bridgeToken): array {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER=>true, CURLOPT_CONNECTTIMEOUT=>7, CURLOPT_TIMEOUT=>20,
