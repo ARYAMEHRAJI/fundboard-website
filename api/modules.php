@@ -54,6 +54,8 @@ function fb_cache_module(string $key, int $ttl, callable $callback): array {
 function fb_http_text(string $url, int $timeout=20): string {
     $host=strtolower((string)parse_url($url,PHP_URL_HOST));
     if($host!=='www.codal.ir')throw new RuntimeException('Codal page host is not allowed.');
+    $lockPath=dirname(__DIR__).'/storage/codal-rate.lock';$lock=fopen($lockPath,'c+');
+    if($lock){flock($lock,LOCK_EX);$last=(float)trim((string)stream_get_contents($lock));$wait=2.2-(microtime(true)-$last);if($wait>0)usleep((int)($wait*1000000));ftruncate($lock,0);rewind($lock);fwrite($lock,(string)microtime(true));fflush($lock);flock($lock,LOCK_UN);fclose($lock);}
     $ch=curl_init($url);
     curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>7,CURLOPT_TIMEOUT=>$timeout,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_HTTPHEADER=>['Accept: text/html,application/xhtml+xml','Accept-Language: fa-IR,fa;q=0.9'],CURLOPT_USERAGENT=>'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36']);
     $body=curl_exec($ch);$status=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);$err=curl_error($ch);curl_close($ch);
