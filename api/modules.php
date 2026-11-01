@@ -207,7 +207,8 @@ function fb_crypto(string $tool, array $p): array {
         if($exchange==='nobitex'){
             $stats=fb_http_json('https://apiv2.nobitex.ir/market/stats')['stats']??[];$suffix=$quote==='IRT'?'rls':'usdt';$v=$stats[strtolower($coin).'-'.$suffix]??null;
             if(!$v)throw new RuntimeException('بازار در نوبیتکس یافت نشد.');
-            return ['exchange'=>'nobitex','name'=>'نوبیتکس','price'=>isset($v['latest'])?(float)$v['latest']/10:null,'bid'=>isset($v['bestBuy'])?(float)$v['bestBuy']/10:null,'ask'=>isset($v['bestSell'])?(float)$v['bestSell']/10:null,'high'=>isset($v['dayHigh'])?(float)$v['dayHigh']/10:null,'low'=>isset($v['dayLow'])?(float)$v['dayLow']/10:null,'change_pct'=>isset($v['dayChange'])?(float)$v['dayChange']:null,'unit'=>$quote==='IRT'?'toman':'usdt'];
+            $scale=$quote==='IRT'?10:1;
+            return ['exchange'=>'nobitex','name'=>'نوبیتکس','price'=>isset($v['latest'])?(float)$v['latest']/$scale:null,'bid'=>isset($v['bestBuy'])?(float)$v['bestBuy']/$scale:null,'ask'=>isset($v['bestSell'])?(float)$v['bestSell']/$scale:null,'high'=>isset($v['dayHigh'])?(float)$v['dayHigh']/$scale:null,'low'=>isset($v['dayLow'])?(float)$v['dayLow']/$scale:null,'change_pct'=>isset($v['dayChange'])?(float)$v['dayChange']:null,'unit'=>$quote==='IRT'?'toman':'usdt'];
         }
         if($exchange==='wallex'){
             $symbols=fb_http_json('https://api.wallex.ir/v1/markets')['result']['symbols']??[];
