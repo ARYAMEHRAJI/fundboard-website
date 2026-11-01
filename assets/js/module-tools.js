@@ -62,7 +62,7 @@ function selectTool(module,id){
  $('#toolTitle').textContent=item[1];
  $('#toolDesc').textContent=supported?'پارامترها را وارد کن و درخواست را اجرا کن. پاسخ از منبع اصلی دریافت می‌شود.':'این قابلیت در فهرست ابزارهای مرجع وجود دارد؛ آداپتور مستقیم آن هنوز به هاست منتقل نشده و به‌جای نمایش داده ساختگی غیرفعال است.';
  const form=$('#toolForm'); if(!supported){form.innerHTML='<div class="data-empty">این ابزار هنوز پیاده‌سازی نشده است. سایر ابزارهای فعال همین بخش قابل استفاده‌اند.</div>';return;}
- const defaults=paramsFor[id]||{};
+ const defaults=(module==='stocks'&&id==='movers')?{market:'bourse',sort_by:'gain',limit:10}:(paramsFor[id]||{});
  const fields=[];
  if(module==='codal' && id==='search_letters'){
   fields.push('<label>عنوان اطلاعیه (اختیاری)<input name="title" placeholder="مثلاً گزارش فعالیت ماهانه"></label>');
