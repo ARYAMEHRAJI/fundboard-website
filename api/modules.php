@@ -143,7 +143,16 @@ function fb_tsetmc(string $tool, array $p): array {
         $quote=[];$etf=[];$last=[];$regNo=(string)($p['reg_no']??'');$detail=[];
         try{$quote=fb_http_json($base.'/Instrument/GetInstrumentInfo/'.$ins)['instrumentInfo']??[];}catch(Throwable $e){}
         try{$etf=fb_http_json($base.'/Fund/GetETFByInsCode/'.$ins)['etf']??[];}catch(Throwable $e){}
-        if($regNo!==''&&ctype_digit($regNo)){try{$detail=fb_http_json($base.'/Fund/GetFundInDetail/'.$regNo)['fund']??[];}catch(Throwable $e){}}
+        try{
+            $detailSet=fb_http_json($base.'/Fund/GetFundInDetail/0',[],18)['fund']??[];
+            $detailRows=is_array($detailSet)&&array_is_list($detailSet)?$detailSet:[$detailSet];
+            foreach($detailRows as $row){
+                $rowReg=(string)($row['regNo']??$row['regno']??$row['no']??'');
+                $rowIns=(string)($row['insCode']??$row['inscode']??'');
+                if(($regNo!==''&&$rowReg===$regNo)||$rowIns===$ins){$detail=$row;break;}
+            }
+            if(!$detail){$detailSet=fb_http_json($base.'/Fund/GetFundInDetail/1',[],18)['fund']??[];$detailRows=is_array($detailSet)&&array_is_list($detailSet)?$detailSet:[$detailSet];foreach($detailRows as $row){$rowReg=(string)($row['regNo']??$row['regno']??$row['no']??'');$rowIns=(string)($row['insCode']??$row['inscode']??'');if(($regNo!==''&&$rowReg===$regNo)||$rowIns===$ins){$detail=$row;break;}}}
+        }catch(Throwable $e){}
         try{$last=fb_http_json($base.'/ClosingPrice/GetClosingPriceInfo/'.$ins)['closingPriceInfo']??[];}catch(Throwable $e){}
         $lastPrice=$num($last['pDrCotVal']??null);
         $nav=$num($etf['pRedTran']??$quote['nav']??null);
