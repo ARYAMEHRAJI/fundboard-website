@@ -64,13 +64,23 @@ if ($action === 'search') {
     if ($q === '' || mb_strlen($q) < 2 || mb_strlen($q) > 80) respond(['success'=>false,'status'=>'invalid_parameter','message'=>'حداقل دو حرف وارد کنید.'],400);
     $hits = ['funds'=>[],'stocks'=>[]];
     try {
+        $universe = fb_dispatch_module('tsetmc','fund_list',[]);
+        foreach (($universe['funds'] ?? []) as $fund) {
+            $name=(string)($fund['name']??'');$symbol=(string)($fund['symbol']??'');
+            if (($name!==''&&mb_stripos($name,$q)!==false)||($symbol!==''&&mb_stripos($symbol,$q)!==false)) {
+                $hits['funds'][]=['name'=>$name,'symbol'=>$symbol,'ins_code'=>$fund['ins_code']??null,'reg_no'=>$fund['reg_no']??null,'type_title'=>$fund['type_title']??'صندوق'];
+            }
+        }
+    } catch (Throwable $e) {}
+    try {
         $matches = fb_dispatch_module('tsetmc','search',['query'=>$q,'limit'=>20])['matches'] ?? [];
         foreach ($matches as $item) {
-            if (($item['asset_type'] ?? '') === 'fund') $hits['funds'][] = $item;
+            if (($item['asset_type'] ?? '') === 'fund') $hits['funds'][] = ['name'=>$item['name'],'symbol'=>$item['symbol'],'ins_code'=>$item['ins_code'],'type_title'=>'ETF'];
             else $hits['stocks'][] = $item;
         }
     } catch (Throwable $e) {}
-    respond(['success'=>true,'status'=>($hits['funds']||$hits['stocks'])?'partial':'empty','query'=>$q,'results'=>$hits,'note'=>'نمادهای ETF و سهام از جست‌وجوی TSETMC شناسایی می‌شوند؛ NAV و ترکیب پرتفوی صندوق‌ها بدون منبع تخصصی صندوق قابل ارائه نیست.']);
+    $seen=[];$hits['funds']=array_values(array_filter($hits['funds'],static function($x)use(&$seen){$k=(string)($x['ins_code']??$x['symbol']??$x['name']);if(isset($seen[$k]))return false;$seen[$k]=true;return true;}));
+    respond(['success'=>true,'status'=>($hits['funds']||$hits['stocks'])?'partial':'empty','query'=>$q,'results'=>$hits,'note'=>'جستجو در فهرست رسمی صندوق‌های TSETMC و نمادهای بازار انجام می‌شود.']);
 }
 if ($action === 'profile') {
     $kind = (string)($_GET['kind'] ?? '');
@@ -85,12 +95,13 @@ if ($action === 'profile') {
             respond(['success'=>true,'status'=>'live','kind'=>'stock','profile'=>$quote,'history'=>$hist['rows']??[],'fetched_at'=>date(DATE_ATOM)]);
         }
         if ($kind === 'fund') {
-            $quote = fb_dispatch_module('tsetmc','quote',['symbol'=>$id]);
+            $fundData = fb_dispatch_module('tsetmc','fund_profile',['symbol'=>$id,'reg_no'=>(string)($_GET['reg_no']??'')]);
             $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>180,'1y'=>365,'all'=>500][$range];
             $hist = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>$days]);
             $disclosures = [];
-            try { $letters = fb_dispatch_module('codal','search_letters',['symbol'=>$id,'page'=>1]); $disclosures = array_slice($letters['letters']??[],0,8); } catch (Throwable $e) {}
-            respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$quote,'history'=>$hist['rows']??[],'disclosures'=>$disclosures,'data_scope'=>'ETF market quote and price history from TSETMC; NAV and holdings require a dedicated fund data provider.','fetched_at'=>date(DATE_ATOM)]);
+            try { $letters = fb_dispatch_module('codal','search_letters',['symbol'=>$fundData['symbol']??$id,'page'=>1]); $disclosures = array_slice($letters['letters']??[],0,8); } catch (Throwable $e) {}
+            $profile = array_merge($fundData, (array)($fundData['quote']??[]));
+            respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$profile,'history'=>$hist['rows']??[],'disclosures'=>$disclosures,'fetched_at'=>date(DATE_ATOM)]);
         }
         respond(['success'=>false,'status'=>'invalid_parameter','message'=>'نوع دارایی پشتیبانی نمی‌شود.'],400);
     } catch (Throwable $e) { respond(['success'=>false,'status'=>'upstream_error','message'=>$e->getMessage()],502); }
