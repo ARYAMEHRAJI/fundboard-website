@@ -85,9 +85,9 @@ if ($action === 'profile') {
             respond(['success'=>true,'status'=>'live','kind'=>'stock','profile'=>$quote,'history'=>$hist['rows']??[],'fetched_at'=>date(DATE_ATOM)]);
         }
         if ($kind === 'fund') {
-            $quote = fb_tsetmc('quote',['symbol'=>$id]);
-            $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>100,'1y'=>100,'all'=>100][$range];
-            $hist = fb_tsetmc('history',['symbol'=>$id,'days'=>$days]);
+            $quote = fb_dispatch_module('tsetmc','quote',['symbol'=>$id]);
+            $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>180,'1y'=>365,'all'=>500][$range];
+            $hist = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>$days]);
             $disclosures = [];
             try { $letters = fb_dispatch_module('codal','search_letters',['symbol'=>$id,'page'=>1]); $disclosures = array_slice($letters['letters']??[],0,8); } catch (Throwable $e) {}
             respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$quote,'history'=>$hist['rows']??[],'disclosures'=>$disclosures,'data_scope'=>'ETF market quote and price history from TSETMC; NAV and holdings require a dedicated fund data provider.','fetched_at'=>date(DATE_ATOM)]);
