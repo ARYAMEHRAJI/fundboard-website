@@ -241,6 +241,86 @@ function fb_crypto(string $tool, array $p): array {
         if($exchange==='bitpin'){$rows=fb_http_json('https://api.bitpin.ir/api/v1/mkt/tickers/');$coins=[];foreach($rows as $t){$parts=explode('_',(string)($t['symbol']??''));if(strtoupper($parts[1]??'')===$quote)$coins[]=strtoupper($parts[0]);}return ['exchange'=>'bitpin','quote'=>$quote,'coins'=>array_values(array_unique($coins))];}
         throw new RuntimeException('فهرست بازار این صرافی هنوز متصل نشده است.');
     }
+    $exchange=(string)($p['exchange']??'wallex');
+    $marketSymbol = function(string $ex) use($coin,$quote): string {
+        if($ex==='nobitex') return $coin.($quote==='IRT'?'IRT':'USDT');
+        if($ex==='wallex') {
+            $markets=fb_http_json('https://api.wallex.ir/v1/markets')['result']['symbols']??[];
+            foreach($markets as $m) if(strtoupper((string)($m['baseAsset']??''))===$coin && strtoupper((string)($m['quoteAsset']??''))===($quote==='IRT'?'TMN':'USDT')) return (string)($m['symbol']??'');
+        }
+        return '';
+    };
+    if($tool==='orderbook'){
+        $symbol=$marketSymbol($exchange);
+        if($exchange==='nobitex'){
+            if(!$symbol)throw new RuntimeException('بازار در نوبیتکس یافت نشد.');
+            $d=fb_http_json('https://apiv2.nobitex.ir/v3/orderbook/'.$symbol);
+            $scale=$quote==='IRT'?10:1;
+            $norm=fn($rows)=>array_map(fn($x)=>['price'=>(float)($x[0]??0)/$scale,'quantity'=>(float)($x[1]??0)],array_slice($rows??[],0,50));
+            return ['exchange'=>$exchange,'symbol'=>$symbol,'unit'=>$quote==='IRT'?'toman':'usdt','asks'=>$norm($d['asks']??[]),'bids'=>$norm($d['bids']??[])];
+        }
+        if($exchange==='wallex'){
+            if(!$symbol)throw new RuntimeException('بازار در والکس یافت نشد.');
+            $d=fb_http_json('https://api.wallex.ir/v1/depth',['symbol'=>$symbol])['result']??[];
+            return ['exchange'=>$exchange,'symbol'=>$symbol,'unit'=>$quote==='IRT'?'toman':'usdt','asks'=>array_slice($d['ask']??[],0,50),'bids'=>array_slice($d['bid']??[],0,50)];
+        }
+        throw new RuntimeException('دفتر سفارش این صرافی هنوز متصل نشده است.');
+    }
+    if($tool==='trades'){
+        $symbol=$marketSymbol($exchange);
+        if($exchange==='nobitex'){
+            if(!$symbol)throw new RuntimeException('بازار در نوبیتکس یافت نشد.');
+            $d=fb_http_json('https://apiv2.nobitex.ir/v2/trades/'.$symbol);
+            $scale=$quote==='IRT'?10:1;
+            return ['exchange'=>$exchange,'symbol'=>$symbol,'unit'=>$quote==='IRT'?'toman':'usdt','trades'=>array_map(fn($x)=>['time'=>$x['time']??null,'price'=>isset($x['price'])?(float)$x['price']/$scale:null,'quantity'=>(float)($x['volume']??0),'side'=>$x['type']??null],array_slice($d['trades']??[],0,max(1,min(100,(int)($p['limit']??30)))))];
+        }
+        if($exchange==='wallex'){
+            if(!$symbol)throw new RuntimeException('بازار در والکس یافت نشد.');
+            $d=fb_http_json('https://api.wallex.ir/v1/trades',['symbol'=>$symbol])['result']['latestTrades']??[];
+            return ['exchange'=>$exchange,'symbol'=>$symbol,'unit'=>$quote==='IRT'?'toman':'usdt','trades'=>array_slice($d,0,max(1,min(100,(int)($p['limit']??30))))];
+        }
+        throw new RuntimeException('معاملات اخیر این صرافی هنوز متصل نشده است.');
+    }
+    if($tool==='candles'){
+        if($exchange!=='wallex')throw new RuntimeException('در این نسخه کندل تاریخی فقط برای والکس متصل شده است.');
+        $symbol=$marketSymbol($exchange);if(!$symbol)throw new RuntimeException('بازار در والکس یافت نشد.');
+        $interval=(string)($p['interval']??'1h');$map=['15m'=>'1','1h'=>'60','4h'=>'180','1d'=>'1D'];$resolution=$map[$interval]??'60';
+        $to=time();$days=max(1,min(100,(int)($p['days']??7)));$from=$to-$days*86400;
+        $d=fb_http_json('https://api.wallex.ir/v1/udf/history',['symbol'=>$symbol,'resolution'=>$resolution,'from'=>$from,'to'=>$to],20);
+        if(($d['s']??'')!=='ok')throw new RuntimeException('والکس تاریخچه کندل معتبری برنگرداند.');
+        $rows=[];$n=count($d['t']??[]);for($i=0;$i<$n;$i++)$rows[]=['time'=>$d['t'][$i]??null,'open'=>$d['o'][$i]??null,'high'=>$d['h'][$i]??null,'low'=>$d['l'][$i]??null,'close'=>$d['c'][$i]??null,'volume'=>$d['v'][$i]??null];
+        return ['exchange'=>$exchange,'symbol'=>$symbol,'interval'=>$interval,'unit'=>$quote==='IRT'?'toman':'usdt','rows'=>$rows];
+    }
+    if($tool==='movers'){
+        $limit=max(1,min(50,(int)($p['limit']??10)));$direction=(string)($p['direction']??'gainers');
+        if($exchange==='wallex'){
+            $symbols=fb_http_json('https://api.wallex.ir/v1/markets')['result']['symbols']??[];$rows=[];
+            foreach($symbols as $m)if(strtoupper((string)($m['quoteAsset']??''))===($quote==='IRT'?'TMN':'USDT')){$st=$m['stats']??[];$rows[]=['symbol'=>$m['symbol']??null,'coin'=>$m['baseAsset']??null,'name'=>$m['faName']??null,'price'=>$st['lastPrice']??null,'change_pct'=>$st['24h_ch']??null,'volume'=>$st['24h_volume']??null,'quote_volume'=>$st['24h_quoteVolume']??null];}
+            usort($rows,fn($a,$b)=>$direction==='losers'?(float)$a['change_pct']<=>(float)$b['change_pct']:(float)$b['change_pct']<=>(float)$a['change_pct']);
+            return ['exchange'=>$exchange,'quote'=>$quote,'direction'=>$direction,'markets'=>array_slice($rows,0,$limit)];
+        }
+        if($exchange==='nobitex'){
+            $stats=fb_http_json('https://apiv2.nobitex.ir/market/stats')['stats']??[];$rows=[];
+            foreach($stats as $key=>$v){[$base,$qpart]=array_pad(explode('-',$key,2),2,'');if($qpart!==($quote==='IRT'?'rls':'usdt'))continue;$scale=$quote==='IRT'?10:1;$rows[]=['coin'=>strtoupper($base),'price'=>isset($v['latest'])?(float)$v['latest']/$scale:null,'change_pct'=>(float)($v['dayChange']??0),'volume'=>$v['volumeSrc']??null];}
+            usort($rows,fn($a,$b)=>$direction==='losers'?(float)$a['change_pct']<=>(float)$b['change_pct']:(float)$b['change_pct']<=>(float)$a['change_pct']);
+            return ['exchange'=>$exchange,'quote'=>$quote,'direction'=>$direction,'markets'=>array_slice($rows,0,$limit)];
+        }
+        throw new RuntimeException('فهرست برترین‌ها برای این صرافی متصل نشده است.');
+    }
+    if($tool==='best_execution'){
+        $book=fb_crypto('orderbook',['exchange'=>$exchange,'coin'=>$coin,'quote'=>$quote]);
+        $side=(string)($p['side']??'buy');$amount=max(0,(float)($p['amount']??0));if($amount<=0)throw new InvalidArgumentException('مبلغ سفارش باید بیشتر از صفر باشد.');
+        $levels=$side==='sell'?($book['bids']??[]):($book['asks']??[]);$remaining=$amount;$filled=0;$total=0;$fills=[];
+        foreach($levels as $level){$price=(float)($level['price']??0);$qty=(float)($level['quantity']??0);if($price<=0||$qty<=0)continue;$take=min($qty,$remaining/$price);if($take<=0)break;$value=$take*$price;$filled+=$take;$total+=$value;$remaining-=$value;$fills[]=['price'=>$price,'quantity'=>$take,'value'=>$value];if($remaining<=0)break;}
+        return ['exchange'=>$exchange,'side'=>$side,'requested_quote_amount'=>$amount,'filled_base_quantity'=>$filled,'filled_quote_amount'=>$total,'average_price'=>$filled?$total/$filled:null,'unfilled_quote_amount'=>max(0,$remaining),'fills'=>$fills,'note'=>'برآورد بر اساس عمق سفارش فعلی است؛ اجرای واقعی سفارش یا کارمزد را تضمین نمی‌کند.'];
+    }
+    if($tool==='arbitrage'){
+        return fb_crypto('compare',['coin'=>$coin,'quote'=>$quote]);
+    }
+    if($tool==='overview'){
+        $rows=[];foreach(['BTC','ETH','USDT'] as $asset){try{$rows[]=fb_crypto('compare',['coin'=>$asset,'quote'=>$quote]);}catch(Throwable $e){}}
+        return ['quote'=>$quote,'assets'=>$rows,'note'=>'قیمت‌ها از صرافی‌های متصل دریافت می‌شوند؛ اختلاف قیمت به‌تنهایی فرصت آربیتراژ قابل اجرا را اثبات نمی‌کند.'];
+    }
     throw new RuntimeException('ابزار انتخابی رمزارز هنوز به API عمومی صرافی‌ها متصل نشده است.');
 }
 function fb_dispatch_module(string $module,string $tool,array $p): array {
