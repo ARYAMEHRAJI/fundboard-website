@@ -56,6 +56,7 @@ function tindexGet(array $config, string $path): array {
 }
 
 require_once __DIR__ . '/modules.php';
+require_once __DIR__ . '/insights.php';
 
 $action = preg_replace('/[^a-z_]/', '', (string)($_GET['action'] ?? 'overview'));
 
@@ -101,10 +102,11 @@ if ($action === 'profile') {
             $fundData = fb_dispatch_module('tsetmc','fund_profile',['symbol'=>$id,'reg_no'=>(string)($_GET['reg_no']??'')]);
             $days = ['1d'=>2,'1w'=>7,'1m'=>30,'3m'=>90,'6m'=>180,'1y'=>365,'all'=>500][$range];
             $hist = fb_dispatch_module('tsetmc','history',['symbol'=>$id,'days'=>$days]);
-            $disclosures = [];
-            try { $letters = fb_dispatch_module('codal','search_letters',['symbol'=>$fundData['symbol']??$id,'page'=>1]); $disclosures = array_slice($letters['letters']??[],0,8); } catch (Throwable $e) {}
+            $history = $hist['rows']??[];
+            $research = fb_build_research('fund',$id,$history,(string)($fundData['symbol']??$id));
+            $disclosures = array_slice($research['events']??[],0,8);
             $profile = array_merge($fundData, (array)($fundData['quote']??[]));
-            respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$profile,'history'=>$hist['rows']??[],'disclosures'=>$disclosures,'fetched_at'=>date(DATE_ATOM)]);
+            respond(['success'=>true,'status'=>'live','kind'=>'fund','profile'=>$profile,'history'=>$history,'disclosures'=>$disclosures,'research'=>$research,'fetched_at'=>date(DATE_ATOM)]);
         }
         respond(['success'=>false,'status'=>'invalid_parameter','message'=>'نوع دارایی پشتیبانی نمی‌شود.'],400);
     } catch (Throwable $e) { respond(['success'=>false,'status'=>'upstream_error','message'=>$e->getMessage()],502); }
