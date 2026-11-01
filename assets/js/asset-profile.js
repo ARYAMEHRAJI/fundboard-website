@@ -2,7 +2,7 @@
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let timer=null,profile=null,regNo='',disclosures=[],chart=null,volumeChart=null,rsiChart=null,kind='stock',assetId='',range='1m',mode='candle';
 function fmt(v){return v==null||v===''?'—':Number(v).toLocaleString('fa-IR',{maximumFractionDigits:2})}
-function faDate(v){const z=String(v??'');if(/^\\d{8}$/.test(z)){const d=new Date(Date.UTC(+z.slice(0,4),+z.slice(4,6)-1,+z.slice(6,8)));return d.toLocaleDateString('fa-IR-u-ca-persian')}return z}
+function faDate(v){const z=String(v??'');if(/^\d{8}$/.test(z)){const d=new Date(Date.UTC(+z.slice(0,4),+z.slice(4,6)-1,+z.slice(6,8)));return d.toLocaleDateString('fa-IR-u-ca-persian')}return z}
 function addSearch(){
  const top=$('.top-left');if(!top||$('#assetSearch'))return;
  const wrap=document.createElement('div');wrap.className='asset-search-wrap';wrap.innerHTML='<div class="asset-search"><span>⌕</span><input id="assetSearch" autocomplete="off" placeholder="جستجوی نماد، سهم یا صندوق…"><kbd>Enter</kbd></div><div id="assetSearchResults" class="asset-search-results" hidden></div>';
