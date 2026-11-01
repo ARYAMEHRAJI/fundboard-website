@@ -41,11 +41,20 @@ function fb_build_research(string $kind,string $id,array $history,string $codalS
         $events[]=['type'=>$type,'title'=>$title,'sent'=>$x['sent']??null,'url'=>$x['url']??null,'tracing_no'=>$x['tracing_no']??null];
     }
     $flags=[];
+    $ret20=$atReturn(20);
     if($last!==null&&$ma20!==null)$flags[]=['key'=>'trend','label'=>$last>=$ma20?'قیمت بالاتر از میانگین ۲۰ روزه':'قیمت پایین‌تر از میانگین ۲۰ روزه','tone'=>$last>=$ma20?'positive':'negative'];
     if($rsi!==null)$flags[]=['key'=>'rsi','label'=>$rsi>=70?'RSI در محدوده بالای ۷۰':($rsi<=30?'RSI در محدوده زیر ۳۰':'RSI در محدوده میانی'),'tone'=>$rsi>=70?'warning':($rsi<=30?'positive':'neutral')];
     if($flow20['net_value']>0)$flags[]=['key'=>'flow','label'=>'خالص ارزش خرید حقیقی در ۲۰ جلسه مثبت بوده است','tone'=>'positive'];
     elseif($flow20['net_value']<0)$flags[]=['key'=>'flow','label'=>'خالص ارزش خرید حقیقی در ۲۰ جلسه منفی بوده است','tone'=>'negative'];
+    if($ret20!==null&&$ret20>0&&$flow20['net_value']<0)$flags[]=['key'=>'divergence','label'=>'واگرایی: رشد قیمت همراه با خروج خالص پول حقیقی در ۲۰ جلسه','tone'=>'warning'];
+    elseif($ret20!==null&&$ret20<0&&$flow20['net_value']>0)$flags[]=['key'=>'divergence','label'=>'واگرایی: افت قیمت همراه با ورود خالص پول حقیقی در ۲۰ جلسه','tone'=>'positive'];
     if($volumeRatio!==null&&$volumeRatio>=1.8)$flags[]=['key'=>'volume','label'=>'میانگین حجم اخیر به‌طور محسوسی بالاتر از میانگین ۶۰ جلسه است','tone'=>'warning'];
+    $latestReport=null;
+    foreach($events as $event){if(str_contains((string)$event['type'],'صورت مالی')){$latestReport=$event;break;}}
+    $reportData=null;
+    if($latestReport&&!empty($latestReport['tracing_no'])){
+        try{$reportData=fb_dispatch_module('codal','letter',['tracing_no'=>$latestReport['tracing_no']]);}catch(Throwable $e){}
+    }
     return [
         'kind'=>$kind,'symbol'=>$symbol,'metrics'=>[
             'return_1w'=>$atReturn(5),'return_1m'=>$atReturn(21),'return_3m'=>$atReturn(63),'return_1y'=>$atReturn(252),
@@ -54,7 +63,7 @@ function fb_build_research(string $kind,string $id,array $history,string $codalS
             'volume_ratio_20_60'=>$volumeRatio,'net_real_value_5'=>$flow5['net_value'],'net_real_value_20'=>$flow20['net_value'],
             'net_real_volume_20'=>$flow20['net_volume']
         ],
-        'flow_series'=>$flowSeries,'events'=>$events,'flags'=>$flags,'codal_error'=>$codalError,
+        'flow_series'=>$flowSeries,'events'=>$events,'flags'=>$flags,'codal_error'=>$codalError,'latest_financial_report'=>$reportData,
         'methodology'=>'بازدهی از قیمت‌های پایانی روزانه TSETMC؛ نوسان سالانه‌شده با انحراف معیار بازده روزانه و ضریب ریشه ۲۵۲؛ افت از بیشینه تاریخی بازه دریافت‌شده؛ جریان حقیقی بر اساس اختلاف ارزش خرید و فروش حقیقی. این شاخص‌ها توصیفی‌اند و توصیه معاملاتی نیستند.',
         'history_points'=>count($rows),'flow_points'=>count($flow)
     ];
