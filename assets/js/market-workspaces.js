@@ -31,7 +31,7 @@ function renderCompare(){
  body.innerHTML='<div class="workspace-toolbar"><input id="compareSymbol" placeholder="نماد؛ مثال: فولاد، افران"><button id="compareAdd" class="btn btn-primary">افزودن نماد</button><span id="compareCount">۰ از ۴</span></div><div id="compareSelected" class="compare-chips"></div><div id="compareChart" class="chart chart-tall"></div><div id="compareTable"></div>';
  selected=[];$('#compareAdd').onclick=()=>{const v=$('#compareSymbol').value.trim();if(v&&selected.length<4&&!selected.includes(v)){selected.push(v);$('#compareSymbol').value='';drawCompare()}};
 }
-async async function drawCompare(){
+async function drawCompare(){
  $('#compareCount').textContent=fmt(selected.length)+' از ۴';$('#compareSelected').innerHTML=selected.map(id=>'<button class="compare-chip" data-remove="'+esc(id)+'">'+esc(id)+' ×</button>').join('');$('#compareSelected').querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{selected=selected.filter(x=>x!==b.dataset.remove);drawCompare()});
  if(workspaceChart){workspaceChart.dispose();workspaceChart=null}
  const series=[],tableRows=[];
