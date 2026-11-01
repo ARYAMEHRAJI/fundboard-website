@@ -11,6 +11,18 @@ function fb_http_json(string $url, array $query = [], int $timeout = 14, array $
     if (!in_array($host, $allowed, true)) {
         throw new RuntimeException('Upstream host is not allow-listed.');
     }
+    if ($host === 'search.codal.ir' || $host === 'www.codal.ir') {
+        $lockPath = dirname(__DIR__) . '/storage/codal-rate.lock';
+        $lock = fopen($lockPath, 'c+');
+        if ($lock) {
+            flock($lock, LOCK_EX);
+            $last = (float)trim((string)stream_get_contents($lock));
+            $wait = 2.2 - (microtime(true) - $last);
+            if ($wait > 0) usleep((int)($wait * 1000000));
+            ftruncate($lock, 0); rewind($lock); fwrite($lock, (string)microtime(true)); fflush($lock);
+            flock($lock, LOCK_UN); fclose($lock);
+        }
+    }
     if ($query) $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($query);
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -38,6 +50,15 @@ function fb_cache_module(string $key, int $ttl, callable $callback): array {
     $v=$callback();
     @file_put_contents($file,json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);
     return $v;
+}
+function fb_http_text(string $url, int $timeout=20): string {
+    $host=strtolower((string)parse_url($url,PHP_URL_HOST));
+    if($host!=='www.codal.ir')throw new RuntimeException('Codal page host is not allowed.');
+    $ch=curl_init($url);
+    curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>7,CURLOPT_TIMEOUT=>$timeout,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_HTTPHEADER=>['Accept: text/html,application/xhtml+xml','Accept-Language: fa-IR,fa;q=0.9'],'CURLOPT_USERAGENT'=>'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36']);
+    $body=curl_exec($ch);$status=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);$err=curl_error($ch);curl_close($ch);
+    if(!is_string($body)||$status<200||$status>=300)throw new RuntimeException('دریافت صفحه کدال ناموفق بود: HTTP '.$status.' '.$err);
+    return $body;
 }
 function fb_fa(string $s): string { return trim(strtr($s,['ي'=>'ی','ك'=>'ک','ۀ'=>'ه'])); }
 function fb_tsetmc(string $tool, array $p): array {
@@ -127,7 +148,38 @@ function fb_codal(string $tool, array $p): array {
         $d=fb_http_json($base.'/v2/q',$params,20);
         return ['total'=>$d['Total']??0,'page'=>$params['PageNumber'],'pages'=>$d['Page']??1,'letters'=>array_map(fn($x)=>['tracing_no'=>$x['TracingNo']??null,'symbol'=>fb_fa((string)($x['Symbol']??'')),'company'=>fb_fa((string)($x['CompanyName']??'')),'title'=>fb_fa((string)($x['Title']??'')),'sent'=>$x['SentDateTime']??null,'url'=>isset($x['Url'])?'https://www.codal.ir'.$x['Url']:null,'pdf'=>!empty($x['HasPdf'])?('https://www.codal.ir'.($x['PdfUrl']??'')):null],$d['Letters']??[])];
     }
-    if($tool==='letter') throw new RuntimeException('خواندن جداول HTML و پیوست‌های کدال در مرحله بعدی آداپتور اضافه می‌شود؛ فعلاً از لینک صفحه/PDF خروجی جست‌وجو استفاده کنید.');
+    if($tool==='letter'){
+        $trace=max(1,(int)($p['tracing_no']??0)); if(!$trace)throw new InvalidArgumentException('شماره پیگیری اطلاعیه را وارد کنید.');
+        $found=fb_http_json($base.'/v2/q',['Audited'=>'true','AuditorRef'=>-1,'Category'=>-1,'Childs'=>'true','CompanyState'=>-1,'CompanyType'=>-1,'Consolidatable'=>'true','IsNotAudited'=>'false','Length'=>-1,'LetterType'=>-1,'Mains'=>'true','NotAudited'=>'true','NotConsolidatable'=>'true','PageNumber'=>1,'Publisher'=>'false','ReportingType'=>-1,'TracingNo'=>$trace,'search'=>'true'],20);
+        $letter=null;foreach(($found['Letters']??[]) as $row)if((int)($row['TracingNo']??0)===$trace){$letter=$row;break;}
+        if(!$letter)throw new RuntimeException('اطلاعیه‌ای با این شماره پیگیری پیدا نشد.');
+        $out=['tracing_no'=>$trace,'symbol'=>fb_fa((string)($letter['Symbol']??'')),'company'=>fb_fa((string)($letter['CompanyName']??'')),'title'=>fb_fa((string)($letter['Title']??'')),'sent'=>$letter['SentDateTime']??null,'url'=>isset($letter['Url'])?'https://www.codal.ir'.($letter['Url'][0]==='/'?$letter['Url']:'/'. $letter['Url']):null];
+        if(!empty($letter['PdfUrl']))$out['pdf']='https://www.codal.ir'.($letter['PdfUrl'][0]==='/'?$letter['PdfUrl']:'/'. $letter['PdfUrl']);
+        if(!empty($letter['ExcelUrl']))$out['excel']='https://www.codal.ir'.($letter['ExcelUrl'][0]==='/'?$letter['ExcelUrl']:'/'. $letter['ExcelUrl']);
+        if(!empty($letter['Url']) && !empty($letter['HasHtml']) && str_contains((string)$letter['Url'],'Decision.aspx')){
+            $page='https://www.codal.ir'.($letter['Url'][0]==='/'?$letter['Url']:'/'. $letter['Url']);
+            $html=fb_http_text($page);
+            if(preg_match('/var datasource = /',$html,$m,PREG_OFFSET_CAPTURE)){
+                $start=$m[0][1]+strlen($m[0][0]);$json=substr($html,$start);$depth=0;$quoted=false;$escape=false;$end=0;
+                for($i=0,$n=strlen($json);$i<$n;$i++){ $ch=$json[$i]; if($quoted){if($escape)$escape=false;elseif($ch==='\\\\')$escape=true;elseif($ch==='"')$quoted=false;continue;} if($ch==='"'){$quoted=true;continue;} if($ch==='{')$depth++;elseif($ch==='}'){$depth--;if($depth===0){$end=$i+1;break;}}}
+                $ds=$end?json_decode(substr($json,0,$end),true):null;
+                if(is_array($ds)){
+                    $out['report']=$ds['title_Fa']??null;$out['period_months']=$ds['period']??null;$out['period_end']=$ds['periodEndToDate']??null;
+                    $sheets=[];$tables=[];
+                    foreach(($ds['sheets']??[]) as $sheet){
+                        $sheets[]=['sheet'=>$sheet['id']??null,'name'=>$sheet['title_Fa']??''];
+                        foreach(($sheet['tables']??[]) as $table){
+                            $rows=[];foreach(($table['cells']??[]) as $cell){$seq=(int)($cell['rowSequence']??0);if(!isset($rows[$seq]))$rows[$seq]=[];$rows[$seq][(int)($cell['columnSequence']??0)]=(string)($cell['value']??'');}
+                            ksort($rows);$lines=[];foreach($rows as $cells){ksort($cells);$vals=array_values($cells);while($vals && end($vals)==='')array_pop($vals);if($vals)$lines[]=implode(' | ',$vals);}
+                            if($lines)$tables[]=['title'=>$table['title_Fa']??($sheet['title_Fa']??''),'rows'=>$lines];
+                        }
+                    }
+                    $out['sheets']=$sheets;$out['tables']=$tables;
+                }else{$out['note']='متن صفحه دریافت شد، اما ساختار جدول قابل‌استخراج نبود.';}
+            }
+        }
+        return $out;
+    }
     throw new InvalidArgumentException('ابزار کدال ناشناخته است.');
 }
 function fb_crypto(string $tool, array $p): array {
