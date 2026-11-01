@@ -20,7 +20,7 @@ return [
     ],
     'cache' => ['ttl' => 90],
     'sources' => [
-        'tindex_base_url' => 'https://api.tindex.ir',
+        'tindex_base_url' => 'https://tindex.app',
         'tindex_token' => '',
         // Optional server-side HTTP bridge URLs. Do not put MCP stdio commands here.
         'tsetmc_bridge_url' => '',
