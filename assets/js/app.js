@@ -57,12 +57,12 @@ async function loadBridge(source){
   if(!items.length){host.innerHTML='<div class="data-empty">اتصال برقرار شد؛ اما هنوز رکوردی از منبع دریافت نشده است.</div>';return}
   const title=titles[source]||'بازار';
   host.innerHTML='<div class="panel" style="margin-top:14px"><div class="panel-head"><div><h3>داده‌های تکمیلی '+title+'</h3><p>دریافت‌شده از سرویس واسط</p></div><span class="status-pill">LIVE BRIDGE</span></div><div style="overflow:auto"><table class="data-table"><thead><tr><th>عنوان</th><th>نماد</th><th>مقدار</th><th>تغییر</th><th>آخرین به‌روزرسانی</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+safe(x.name||x.title||'—')+'</td><td>'+safe(x.symbol||x.ticker||'—')+'</td><td>'+fmt(x.value??x.price??x.nav)+'</td><td>'+fmt(x.change??x.return??'—')+'</td><td>'+safe(x.updated_at||'—')+'</td></tr>').join('')+'</tbody></table></div></div>';
-  const empty=host.parentElement.querySelector('.data-empty');if(empty)empty.remove();
+  
  }catch(e){host.innerHTML='<div class="data-empty">سرویس واسط این بخش هنوز تنظیم نشده یا پاسخ معتبری نداد.</div>'}
 }
 function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function navigate(v){
- if(!titles[v])return;$('#pageTitle').textContent=titles[v];$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+ if(!titles[v])return;charts.forEach(c=>c.dispose());charts=[];$('#pageTitle').textContent=titles[v];$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
  const home=v==='overview';['.welcome-row','.notice','#marketMetrics','.content-grid','.feature-grid','.lower-grid'].forEach(s=>{const e=$(s);if(e)e.hidden=!home});
  const old=$('#dynamicView');if(old)old.remove();
  if(home){drawOverviewCharts();loadOverview()}else{
