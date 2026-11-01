@@ -38,7 +38,7 @@ function fb_build_research(string $kind,string $id,array $history,string $codalS
         $title=(string)($x['title']??'');$low=mb_strtolower($title);
         $type='سایر اطلاعیه‌ها';
         foreach(['صورت مالی'=>'صورت مالی','گزارش فعالیت ماهانه'=>'عملکرد ماهانه','فعالیت ماهانه'=>'عملکرد ماهانه','افشای اطلاعات بااهمیت'=>'افشای بااهمیت','افزایش سرمایه'=>'افزایش سرمایه','تقسیم سود'=>'تقسیم سود','مجمع'=>'مجمع','تجدید ارزیابی'=>'تجدید ارزیابی','قرارداد'=>'قرارداد','توقف'=>'توقف نماد','پیشنهاد هیئت مدیره'=>'پیشنهاد هیئت‌مدیره'] as $needle=>$label){if(mb_stripos($title,$needle)!==false){$type=$label;break;}}
-        $events[]=['type'=>$type,'title'=>$title,'sent'=>$x['sent']??null,'url'=>$x['url']??null,'tracing_no'=>$x['tracing_no']??null];
+        $events[]=['type'=>$type,'title'=>$title,'sent'=>$x['sent']??null,'url'=>$x['url']??null,'tracing_no'=>$x['tracing_no']??null,'company'=>$x['company']??null,'symbol'=>$x['symbol']??null];
     }
     $flags=[];
     $ret20=$atReturn(20);
